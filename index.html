@@ -348,7 +348,7 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--navy);col
       <div class="ph">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div><h2>Portefeuille & Reportings</h2><p>Suivi de vos investissements</p></div>
-          <button class="btn btn-ghost btn-sm" onclick="loadReporting()" style="color:var(--gold);border-color:var(--gold)">↻ Actualiser</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadReporting()" style="color:var(--gold);border-color:var(--gold)" style="color:var(--gold);border-color:var(--gold)">↻ Actualiser</button>
         </div>
       </div>
       <!-- KPIs -->
@@ -789,7 +789,7 @@ function renderAccueil(){
 // ═══════════════════════════════════════════════════════
 function renderParcours(){
   var el = document.getElementById('parcours-content');
-  if (!el) return;
+  if(!el) return;
   el.innerHTML = '';
 
   var decoded = decodeURIComponent(
@@ -797,29 +797,24 @@ function renderParcours(){
   );
   el.innerHTML = decoded;
 
-  // Forcer ps2 visible + tout son contenu
+  // Forcer ps2 visible
   var ps2 = el.querySelector('#ps2');
-  if (ps2) {
+  if(ps2){
     ps2.style.display = 'block';
-    ps2.querySelectorAll('[style*="display:none"], [style*="display: none"]').forEach(function(s){
-      s.style.display = 'block';
-    });
+    ps2.querySelectorAll('[style*="display:none"],[style*="display: none"]').forEach(function(s){ s.style.display='block'; });
   }
 
-  // Supprimer TOUS les boutons nav + indicateurs étapes + frise de progression
-  el.querySelectorAll(
-    '.q-nav-btns, .step-nav, .q-steps, .step-indicator, ' +
-    '.progress-steps, .progress-step, .ps-dot, .ps-label, ' +
-    '[class*="step-"], [class*="-step"], [class*="progress-step"]'
-  ).forEach(function(b){ b.remove(); });
-  // Supprimer aussi les éléments contenant "Étape x/y"
+  // Supprimer boutons nav et indicateurs d'étapes
+  el.querySelectorAll('.q-nav-btns,.step-nav,.q-steps,.step-indicator').forEach(function(b){ b.remove(); });
   el.querySelectorAll('*').forEach(function(e){
-    if(e.textContent && /[ÉéEe]tape\s*\d+\/\d+/.test(e.textContent) && e.children.length===0){
-      e.closest('div') && e.closest('div').remove();
+    if(e.children.length===0 && e.textContent && /[ÉéEe]tape\s*\d+\/\d+/.test(e.textContent.trim())){
+      var p = e.parentElement;
+      if(p && p.children.length <= 2) p.remove();
+      else e.remove();
     }
   });
 
-  // Bouton unique "Envoyer à mon conseiller"
+  // Bouton unique
   var nav = document.createElement('div');
   nav.style.cssText = 'display:flex;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--cream2)';
   var btn = document.createElement('button');
@@ -828,20 +823,18 @@ function renderParcours(){
   btn.onclick = function(){
     var data = {};
     el.querySelectorAll('input,select,textarea').forEach(function(inp){
-      if(inp.id) data[inp.id] = (inp.type==='checkbox'||inp.type==='radio') ? inp.checked : inp.value;
+      if(inp.id) data[inp.id]=(inp.type==='checkbox'||inp.type==='radio')?inp.checked:inp.value;
     });
-    if(!CLIENT.parcoursData) CLIENT.parcoursData = {};
+    if(!CLIENT.parcoursData) CLIENT.parcoursData={};
     Object.assign(CLIENT.parcoursData, data);
     localStorage.setItem('caremma_c_'+eKey(CLIENT.email), JSON.stringify(CLIENT));
-
-    // Envoyer vers JSONBin
     jbGet(MSG_BIN).then(function(d){
-      var k = eKey(CLIENT.email);
+      var k=eKey(CLIENT.email);
       if(!d.messages) d.messages={};
       if(!d.messages[k]) d.messages[k]={prenom:CLIENT.prenom,nom:CLIENT.nom,email:CLIENT.email,msgs:[],docs:[]};
-      d.messages[k].parcoursData = data;
-      d.messages[k].parcoursEnvoye = new Date().toLocaleDateString('fr-FR');
-      return jbPut(MSG_BIN, d);
+      d.messages[k].parcoursData=data;
+      d.messages[k].parcoursEnvoye=new Date().toLocaleDateString('fr-FR');
+      return jbPut(MSG_BIN,d);
     }).then(function(){ toast('Questionnaire envoyé ✓','success'); })
     .catch(function(){ toast('Sauvegardé localement ✓','success'); });
   };
@@ -849,20 +842,16 @@ function renderParcours(){
   el.appendChild(nav);
 
   // Pré-remplir
-  var sv = function(id,v){ var e=el.querySelector('#'+id); if(e&&v) e.value=v; };
-  sv('qo-nom-naiss', CLIENT.nom);
-  sv('qo-prenom', CLIENT.prenom||'');
-  sv('qo-email', CLIENT.email||'');
-  sv('qo-tel', CLIENT.tel||'');
+  var sv=function(id,v){var e=el.querySelector('#'+id);if(e&&v)e.value=v;};
+  sv('qo-nom-naiss',CLIENT.nom); sv('qo-prenom',CLIENT.prenom||'');
+  sv('qo-email',CLIENT.email||''); sv('qo-tel',CLIENT.tel||'');
 
-  // Restaurer données
-  var pd = CLIENT.parcoursData||{};
+  // Restaurer + auto-save
+  var pd=CLIENT.parcoursData||{};
   Object.keys(pd).forEach(function(id){
     var e=el.querySelector('#'+id); if(!e) return;
     if(e.type==='checkbox'||e.type==='radio') e.checked=pd[id]; else e.value=pd[id];
   });
-
-  // Auto-save + radios
   el.querySelectorAll('input,select,textarea').forEach(function(inp){
     inp.addEventListener('change',function(){
       if(!CLIENT.parcoursData) CLIENT.parcoursData={};
@@ -1022,92 +1011,38 @@ var _shareDoc  = null;
 
 function handleUpload(file, zone){
   if(!file) return;
+  if(file.size > 5*1024*1024){ toast('Fichier trop volumineux (max 5 Mo)','error'); return; }
   var zid = zone||'doc';
-
-  // Taille lisible
-  var sizeLabel = file.size > 1024*1024
-    ? (file.size/1024/1024).toFixed(1)+' Mo'
-    : Math.round(file.size/1024)+' Ko';
-
-  // Stocker la référence du fichier pour Web Share (avant toute opération async)
-  _shareFile = file;
-
-  var doc = {
-    id: Date.now()+'_'+Math.random().toString(36).slice(2,5),
-    nom: file.name, name: file.name,
-    cat: zid==='rep' ? 'Reporting' : 'Document',
-    date: new Date().toLocaleDateString('fr-FR'),
-    size: sizeLabel, status: 'pending', fromClient: true
-  };
-  _shareDoc = doc;
-
-  // ── Étape 1 : lire le fichier en base64 (pour localStorage et Web Share fallback)
+  toast('Chargement en cours...','');
   var reader = new FileReader();
   reader.onload = function(e){
-    var dataUrl = e.target.result;
-
-    // Stocker base64 en local seulement si fichier < 1,5 Mo (limite localStorage ~5 Mo)
-    if(file.size < 1.5*1024*1024) doc.data = dataUrl;
-
-    // Enregistrement local immédiat → le doc apparaît dans la liste
+    var doc = {
+      id: Date.now()+'_'+Math.random().toString(36).slice(2,5),
+      nom: file.name, name: file.name,
+      cat: zid==='rep'?'Reporting':'Document',
+      date: new Date().toLocaleDateString('fr-FR'),
+      size: (file.size/1024).toFixed(0)+' Ko',
+      data: e.target.result,
+      fromClient: true
+    };
     if(!CLIENT.docs) CLIENT.docs=[];
     CLIENT.docs.push(doc);
     localStorage.setItem('caremma_c_'+eKey(CLIENT.email), JSON.stringify(CLIENT));
     if(zid==='doc') renderDocs();
-
-    // Afficher les boutons d'action post-dépôt (incluant "Envoyer par email")
-    _showUploadActions(zid, doc);
-
-    // ── Étape 2 : upload Cloudinary en arrière-plan (non bloquant) ─────────────
-    var fd = new FormData();
-    fd.append('file', file, file.name);
-    fd.append('upload_preset', CLD_PRESET);
-    fd.append('folder', 'caremma_clients');
-    fetch('https://api.cloudinary.com/v1_1/'+CLD_CLOUD+'/auto/upload',{method:'POST',body:fd})
-    .then(function(r){ return r.ok ? r.json() : r.text().then(function(t){ throw new Error('CLD '+r.status+' '+t.slice(0,100)); }); })
-    .then(function(cld){
-      if(!cld.secure_url) throw new Error('Pas de URL Cloudinary');
-      // Mettre à jour le doc local avec l'URL
-      var idx = CLIENT.docs.findIndex(function(d){ return d.id===doc.id; });
-      if(idx>=0) CLIENT.docs[idx].cloudinaryUrl = cld.secure_url;
-      localStorage.setItem('caremma_c_'+eKey(CLIENT.email), JSON.stringify(CLIENT));
-      if(zid==='doc') renderDocs();
-      // Enregistrement dans JSONBin (métadonnées uniquement) → visibilité CRM
-      var docMeta = {id:doc.id,nom:doc.nom,name:doc.name,cat:doc.cat,date:doc.date,size:doc.size,status:'pending',fromClient:true,cloudinaryUrl:cld.secure_url};
-      return jbGet(MSG_BIN).then(function(data){
-        var k=eKey(CLIENT.email);
-        if(!data.messages) data.messages={};
-        if(!data.messages[k]) data.messages[k]={prenom:CLIENT.prenom,nom:CLIENT.nom,email:CLIENT.email,msgs:[],docs:[]};
-        if(!data.messages[k].docs) data.messages[k].docs=[];
-        var ids=data.messages[k].docs.map(function(d){return d.id;});
-        if(!ids.includes(docMeta.id)) data.messages[k].docs.push(docMeta);
-        else data.messages[k].docs=data.messages[k].docs.map(function(d){return d.id===docMeta.id?Object.assign({},d,{cloudinaryUrl:cld.secure_url}):d;});
-        return jbPut(MSG_BIN,data);
-      }).then(function(){ return cld.secure_url; });
-    })
-    .then(function(url){
-      if(!url) return;
-      toast('✅ Synchronisé avec votre conseiller','success');
-      // Email automatique avec le lien Cloudinary
-      EJS_TPL_DOC = localStorage.getItem('caremma_doc_tpl') || EJS_TPL_DOC;
-      ejsSendToMarc({
-        to_email:MARC_EMAIL, to_name:'Marc Reverseau', from_name:CLIENT.prenom+' '+CLIENT.nom,
-        client_prenom:CLIENT.prenom, client_nom:CLIENT.nom, client_email:CLIENT.email,
-        subject:'📎 Nouveau document de '+CLIENT.prenom+' '+CLIENT.nom,
-        message:CLIENT.prenom+' '+CLIENT.nom+' ('+CLIENT.email+') a déposé :\n\n• '+doc.nom+'\n• Taille : '+doc.size+'\n• Date : '+doc.date+'\n• Lien : '+url,
-        nom_document:doc.nom, date_depot:doc.date, lien_document:url
-      }).catch(function(){});
-    })
-    .catch(function(err){
-      console.warn('[Cloudinary background]', err.message);
-      // Non bloquant — le doc est dans l'espace client, le client peut l'envoyer via le bouton
-    });
+    toast('Document enregistré ✓','success');
+    jbGet(MSG_BIN).then(function(data){
+      var k=eKey(CLIENT.email);
+      if(!data.messages) data.messages={};
+      if(!data.messages[k]) data.messages[k]={prenom:CLIENT.prenom,nom:CLIENT.nom,email:CLIENT.email,msgs:[],docs:[]};
+      if(!data.messages[k].docs) data.messages[k].docs=[];
+      data.messages[k].docs.push(doc);
+      return jbPut(MSG_BIN,data);
+    }).catch(function(e){ console.warn('JSONBin doc:',e); });
   };
   reader.onerror = function(){ toast('Erreur lecture fichier','error'); };
   reader.readAsDataURL(file);
 }
 
-// ─── Panneau post-upload affiché sous la dropzone ────────────────────────────
 function _showUploadActions(zid, doc){
   // Cibler le conteneur upload-progress (parent de up-status) pour le rendre visible
   var prog = document.getElementById('up-prog-'+zid);
@@ -1138,35 +1073,53 @@ function _showUploadActions(zid, doc){
 }
 
 // ─── Envoi email avec pièce jointe (Web Share API ou mailto fallback) ─────────
-function sendDocByEmail(){
-  var file   = _shareFile;
+async function sendDocByEmail(){
   var doc    = _shareDoc;
   var prenom = (CLIENT&&CLIENT.prenom)||'';
   var nom    = (CLIENT&&CLIENT.nom)||'';
   var email  = (CLIENT&&CLIENT.email)||'';
-  var date   = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
 
-  var shareText = 'Bonjour,\n\nVeuillez trouver ci-joint'
-    +(doc?' : '+doc.nom:' le document demandé')+'.\n\n'
-    +'Client : '+prenom+' '+nom+'\nEmail : '+email+'\nDate : '+date
-    +'\n\nCordialement,\n'+prenom+' '+nom;
+  if(!doc){ toast('Aucun document sélectionné','error'); return; }
+  if(!doc.data){ toast('Document sans données — rechargez','error'); return; }
 
-  // ── Web Share API — fonctionne sur Safari iOS 14+ / macOS 12+ ─────────────
-  // L'appel doit être DANS le handler onclick (geste utilisateur direct) ← c'est le cas ici
-  if(file && navigator.canShare && navigator.canShare({files:[file]})){
-    navigator.share({
-      files: [file],
-      title: 'Document de '+prenom+' '+nom,
-      text:  shareText
-    }).catch(function(e){
-      // AbortError = utilisateur a annulé le share sheet, pas une vraie erreur
-      if(e.name !== 'AbortError') openMailDoc(doc ? doc.nom : null);
+  toast('Envoi en cours...','');
+
+  // Envoyer via EmailJS avec le doc en message (PJ non supportée par EmailJS)
+  // + notification Web3Forms à Marc avec lien de téléchargement
+  try{
+    // 1. Notifier Marc via Web3Forms
+    var b64 = doc.data.split(',')[1]||doc.data;
+    var mimeType = doc.data.split(';')[0].replace('data:','')||'application/octet-stream';
+
+    await fetch('https://api.web3forms.com/submit',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        access_key: W3F_KEY,
+        subject: 'Document de '+prenom+' '+nom+' — '+doc.nom,
+        from_name: prenom+' '+nom,
+        email: email,
+        message: 'Le client '+prenom+' '+nom+' ('+email+') a envoyé : '+doc.nom+' — '+new Date().toLocaleDateString('fr-FR'),
+        attachment: b64,
+        filename: doc.nom,
+        mime_type: mimeType
+      })
     });
-    return;
+    toast('✓ Document envoyé à votre conseiller','success');
+  }catch(e){
+    console.warn('Web3Forms:', e);
+    // Fallback : Web Share API
+    if(_shareFile && navigator.canShare && navigator.canShare({files:[_shareFile]})){
+      navigator.share({
+        files:[_shareFile],
+        title:'Document de '+prenom+' '+nom,
+        text:'Document : '+doc.nom
+      }).catch(function(){});
+    } else {
+      // Fallback mailto
+      openMailDoc(doc.nom);
+    }
   }
-
-  // ── Fallback universel : mailto pré-rempli ─────────────────────────────────
-  openMailDoc(doc ? doc.nom : null);
 }
 
 function loadReporting(){
@@ -1536,19 +1489,36 @@ function goConnaissance(n){
 }
 
 function calcScore() {
-  var total=0;
-  var scope=document.getElementById('connaissance-content')||document.getElementById('cif-parcours-wrap')||document;
+  var total = 0;
+  var scope = document;
+
   ['act','obl','nco','mon','div','str','aut','ban','imm','av','dom','pee','sci'].forEach(function(p){
-    var r=scope.querySelector('input[name="kn-'+p+'"]:checked'); if(r) total+=parseInt(r.value)||0;
+    var r=scope.querySelector('input[name="kn-'+p+'"]:checked');
+    if(r) total+=parseInt(r.value)||0;
   });
-  var gp=scope.querySelector('input[name="gestion_passe"]:checked'); if(gp) total+=parseInt(gp.value)||0;
-  for(var i=1;i<=4;i++){ var r=scope.querySelector('input[name="inf'+i+'"]:checked'); if(r) total+=parseInt(r.value)||0; }
-  for(var j=1;j<=6;j++){ var r2=scope.querySelector('input[name="aff'+j+'"]:checked'); if(r2) total+=parseInt(r2.value)||0; }
-  var sv=document.getElementById('q-score-val'); if(sv) sv.textContent=total;
-  var cat=total<=125?'Investisseur de Base':total<=171?'Investisseur Averti':'Investisseur Avancé';
-  var pv=document.getElementById('q-profil-val'); if(pv) pv.textContent=cat;
-  var rk=document.getElementById('result-score-kn'); if(rk) rk.textContent=total;
-  var rc=document.getElementById('result-cat-kn');  if(rc) rc.textContent=cat;
+
+  var gp=scope.querySelector('input[name="gestion_passe"]:checked');
+  if(gp) total+=parseInt(gp.value)||0;
+
+  for(var i=1;i<=4;i++){
+    var r=scope.querySelector('input[name="inf'+i+'"]:checked');
+    if(r) total+=parseInt(r.value)||0;
+  }
+
+  for(var j=1;j<=6;j++){
+    var r2=scope.querySelector('input[name="aff'+j+'"]:checked');
+    if(r2) total+=parseInt(r2.value)||0;
+  }
+
+  var cat = total<=125?'Investisseur de Base':total<=171?'Investisseur Averti':'Investisseur Avancé';
+
+  ['q-score-val','score-val','result-score-kn'].forEach(function(id){
+    var e=document.getElementById(id); if(e) e.textContent=total;
+  });
+  ['q-profil-val','result-cat-kn'].forEach(function(id){
+    var e=document.getElementById(id); if(e) e.textContent=cat;
+  });
+  console.log('calcScore total='+total+' cat='+cat);
 }
 
 function calcRiskScore(){
