@@ -803,6 +803,9 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;background:#0
 
 
 
+
+
+
 // ═══ CONFIG ═══
 var MSG_BIN='69efcf8736566621a8fb341e',CLIENTS_BIN='69efcc82856a6821897cc233',JBKEY='$2a$10$H/fTo.AwPWr.044IVk/qoOQeZHgnUicO63Oobmk2KqcOUB7LFSGym';
 var EJS_PUBLIC='cstVoAsfF9vn4uc6C',EJS_SERVICE='service_qz3nkkq',EJS_TPL='template_wmauhka',EJS_TPL_SIG='template_88jyjec',EJS_SERVICE_SIG='service_hp5456h';
@@ -1012,7 +1015,13 @@ function goPage(name,navEl){
   } else {
     if(window._msgRefresh){ clearInterval(window._msgRefresh); window._msgRefresh=null; }
   }
-  if(name==='reporting')loadReporting();
+  if(name==='reporting'){
+    loadReporting();
+    setTimeout(function(){
+      var h=window._pendingHistory||(CLIENT&&CLIENT.ptfHistory)||[];
+      if(h.length>=2) drawChart(h);
+    },300);
+  }
 }
 
 // ═══ KPIs ═══
@@ -1843,11 +1852,12 @@ function loadReporting(){
     if(entry&&entry.patrimoine){
       CLIENT.patrimoine=entry.patrimoine;
       // Prendre l'historique le plus complet
-      var h1 = entry.patrimoine.historique||[];
-      var h2 = entry.ptfHistory||[];
-      CLIENT.ptfHistory = h1.length>=h2.length ? h1 : h2;
-      if(!CLIENT.ptfHistory.length) CLIENT.ptfHistory = CLIENT.ptfHistory||[];
+      // Historique depuis patrimoine.historique (source principale)
+      CLIENT.ptfHistory = entry.patrimoine.historique
+        || entry.ptfHistory
+        || CLIENT.ptfHistory || [];
       if(entry.profil) CLIENT.profil=entry.profil;
+      console.log('ptfHistory chargé:', CLIENT.ptfHistory.length, 'points');
       saveLocal();
       // Attendre que le DOM soit visible avant de dessiner
       setTimeout(function(){ renderReporting(CLIENT.patrimoine,CLIENT.ptfHistory); renderKPIs(); },100);
@@ -1885,162 +1895,153 @@ function renderReporting(p,history){
 }
 
 function drawChart(history){
-  var canvas=document.getElementById('ptf-chart');if(!canvas)return;
-  var wrap=canvas.parentElement;
-  var w=wrap.offsetWidth||wrap.clientWidth||600;
-  if(!w||w<50){ setTimeout(function(){drawChart(history);},300); return; }
-  canvas.width=w; canvas.height=180;
-  // Détruire ancien chart Chart.js si existant
-  if(window._ptfChart){ try{window._ptfChart.destroy();}catch(e){} window._ptfChart=null; }
-  var ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);
-  if(!history||history.length<2){
-    ctx.fillStyle='rgba(143,170,191,0.5)';ctx.font='14px Georgia,serif';ctx.textAlign='center';
-    ctx.fillText('Aucune donnée de performance',canvas.width/2,70);
-    ctx.font='12px Inter,sans-serif';ctx.fillStyle='rgba(143,170,191,0.35)';
-    ctx.fillText('Votre conseiller mettra à jour vos données depuis le CRM',canvas.width/2,95);
+  if(history&&history.length) window._pendingHistory=history;
+  var canvas=document.getElementById('ptf-chart');
+  var emptyEl=document.getElementById('ptf-empty');
+  if(!canvas){return;}
+
+  var data=window._pendingHistory||history||[];
+
+  if(!data||data.length<2){
+    canvas.style.display='none';
+    if(emptyEl) emptyEl.style.display='flex';
     return;
   }
-  var vals=history.map(function(h){return+h.valeur||0;});
-  var labels=history.map(function(h){return h.date||'';});
-  var min=Math.min.apply(null,vals),max=Math.max.apply(null,vals),range=max-min||1;
-  var pad={l:70,r:20,t:20,b:32};
-  var cw=canvas.width-pad.l-pad.r,ch=canvas.height-pad.t-pad.b;
-  // Grille
-  for(var g=0;g<=4;g++){
-    var gy=pad.t+ch*(g/4);
-    ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
-    ctx.beginPath();ctx.moveTo(pad.l,gy);ctx.lineTo(canvas.width-pad.r,gy);ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle='rgba(143,170,191,0.6)';ctx.font='10px Inter,sans-serif';ctx.textAlign='right';
-    ctx.fillText(fmt(max-range*(g/4)).replace(' €',''),pad.l-5,gy+4);
+  canvas.style.display='block';
+  if(emptyEl) emptyEl.style.display='none';
+
+  // Détruire ancien chart
+  if(window._ptfChart){try{window._ptfChart.destroy();}catch(e){} window._ptfChart=null;}
+
+  var labels=data.map(function(h){return h.date||h.dateRaw||'';});
+  var values=data.map(function(h){return+h.valeur||0;});
+  var minV=Math.min.apply(null,values);
+  var maxV=Math.max.apply(null,values);
+
+  // Couleur selon tendance
+  var isPos = values[values.length-1] >= values[0];
+  var lineColor = isPos ? '#22c55e' : '#ef4444';
+  var fillColor = isPos ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)';
+
+  var ctx=canvas.getContext('2d');
+
+  // Utiliser Chart.js si disponible
+  if(typeof Chart!=='undefined'){
+    window._ptfChart=new Chart(ctx,{
+      type:'line',
+      data:{
+        labels:labels,
+        datasets:[{
+          label:'Valeur (€)',
+          data:values,
+          borderColor:'#c9a84c',
+          backgroundColor:'rgba(201,168,76,0.08)',
+          borderWidth:2.5,
+          pointBackgroundColor:'#e8c96a',
+          pointRadius:4,
+          pointHoverRadius:6,
+          fill:true,
+          tension:0.3
+        }]
+      },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{
+              label:function(ctx2){
+                return fmt(ctx2.parsed.y);
+              }
+            }
+          }
+        },
+        scales:{
+          x:{
+            grid:{color:'rgba(255,255,255,0.05)'},
+            ticks:{color:'rgba(143,170,191,0.7)',font:{size:10}}
+          },
+          y:{
+            grid:{color:'rgba(255,255,255,0.05)'},
+            ticks:{
+              color:'rgba(143,170,191,0.7)',
+              font:{size:10},
+              callback:function(v){
+                return (v/1000).toFixed(0)+'K€';
+              }
+            }
+          }
+        }
+      }
+    });
+    return;
   }
+
+  // Fallback canvas natif si Chart.js pas dispo
+  var W=canvas.width=canvas.parentElement.offsetWidth||600;
+  var H=canvas.height=200;
+  ctx.clearRect(0,0,W,H);
+  var M={l:60,r:20,t:15,b:30};
+  var cw=W-M.l-M.r, ch=H-M.t-M.b;
+  var range=maxV-minV||1;
+
   // Aire
-  var grd=ctx.createLinearGradient(0,pad.t,0,pad.t+ch);
-  grd.addColorStop(0,'rgba(201,168,76,0.25)');grd.addColorStop(1,'rgba(201,168,76,0)');
+  var grd=ctx.createLinearGradient(0,M.t,0,M.t+ch);
+  grd.addColorStop(0,'rgba(201,168,76,0.25)');
+  grd.addColorStop(1,'rgba(201,168,76,0)');
   ctx.beginPath();
-  history.forEach(function(h,i){
-    var x=pad.l+cw*(i/(history.length-1));
-    var y=pad.t+ch*(1-(+h.valeur-min)/range);
+  data.forEach(function(h,i){
+    var x=M.l+cw*(i/(data.length-1));
+    var y=M.t+ch*(1-(+h.valeur-minV)/range);
     if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
   });
-  ctx.lineTo(pad.l+cw,pad.t+ch);ctx.lineTo(pad.l,pad.t+ch);ctx.closePath();
+  ctx.lineTo(M.l+cw,M.t+ch);ctx.lineTo(M.l,M.t+ch);ctx.closePath();
   ctx.fillStyle=grd;ctx.fill();
+
   // Ligne
   ctx.beginPath();
-  history.forEach(function(h,i){
-    var x=pad.l+cw*(i/(history.length-1));
-    var y=pad.t+ch*(1-(+h.valeur-min)/range);
+  data.forEach(function(h,i){
+    var x=M.l+cw*(i/(data.length-1));
+    var y=M.t+ch*(1-(+h.valeur-minV)/range);
     if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
   });
   ctx.strokeStyle='#c9a84c';ctx.lineWidth=2.5;ctx.stroke();
-  // Points + labels
-  history.forEach(function(h,i){
-    var x=pad.l+cw*(i/(history.length-1));
-    var y=pad.t+ch*(1-(+h.valeur-min)/range);
-    ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);ctx.fillStyle='#e8c96a';ctx.fill();
-    if(i%Math.ceil(history.length/5)===0||i===history.length-1){
-      ctx.fillStyle='rgba(143,170,191,0.7)';ctx.font='9px Inter,sans-serif';ctx.textAlign='center';
-      ctx.fillText(h.date||'',x,pad.t+ch+22);
+
+  // Points
+  data.forEach(function(h,i){
+    var x=M.l+cw*(i/(data.length-1));
+    var y=M.t+ch*(1-(+h.valeur-minV)/range);
+    ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);
+    ctx.fillStyle='#e8c96a';ctx.fill();
+    if(i===0||i===data.length-1){
+      ctx.fillStyle='rgba(143,170,191,0.8)';ctx.font='9px Inter,sans-serif';ctx.textAlign='center';
+      ctx.fillText(h.date||'',x,H-8);
     }
   });
 }
 
-
-
-// Navigation questionnaire injecté
-window.nextStep = function(from, to) {
-  if(to === 'questionnaire') {
-    // Aller directement à connaissance & compétence
-    goPage('connaissance', document.getElementById('nav-connaissance'));
-  } else if(to === 'entree' || from === 'entree') {
-    goPage('objectifs', document.getElementById('nav-objectifs'));
-  } else {
-    goPage('connaissance', document.getElementById('nav-connaissance'));
+// Filtre période
+function setPeriod(period, btn){
+  if(btn){
+    document.querySelectorAll('#period-btns button').forEach(function(b){
+      b.className='btn btn-ghost btn-sm';b.style.padding='4px 10px';b.style.fontSize='11px';
+    });
+    btn.className='btn btn-primary btn-sm';btn.style.padding='4px 10px';btn.style.fontSize='11px';
   }
-};
-window.prevStep = function(from) {
-  if(from === 'entree') {
-    goPage('accueil', document.getElementById('nav-accueil'));
-  } else {
-    goPage('objectifs', document.getElementById('nav-objectifs'));
-  }
-};
-window.markStepDone = function(step) {
-  // Auto-save silencieux
-  saveLocal();
-};
-window.goConnaissance = function(n) {
-  goPage('connaissance', document.getElementById('nav-connaissance'));
-};
-
-
-// ═══ FONCTIONS QUESTIONNAIRE CONNAISSANCE ═══
-
-// Sélection profil depuis le graphique SVG
-window.selectProfileFromChart = function(profil) {
-  var labels = {
-    'securite': 'Sécurité (SR)',
-    'prudent': 'Prudent (P)',
-    'equilibre': 'Équilibré (EQ)',
-    'dynamique': 'Dynamique (D)',
-    'offensif': 'Offensif (OF)',
-    'agressif': 'Agressif (AG)'
-  };
-  var label = labels[profil] || profil;
-  // Mettre à jour l'input caché
-  var inp = document.getElementById('risk-profile-value');
-  if(inp) inp.value = profil;
-  // Afficher dans result-profile-graph
-  var rg = document.getElementById('result-profile-graph');
-  if(rg) rg.textContent = label;
-  // Afficher dans profil-calc
-  var pc = document.getElementById('result-profile-calc');
-  if(pc) pc.textContent = label;
-  // Mettre en surbrillance le cercle sélectionné dans le SVG
-  document.querySelectorAll('[data-profil]').forEach(function(el) {
-    el.style.opacity = el.getAttribute('data-profil') === profil ? '1' : '0.4';
+  var all=window._pendingHistory||CLIENT.ptfHistory||[];
+  if(!all.length){drawChart([]);return;}
+  var now=new Date();
+  var filtered=all.filter(function(h){
+    if(period==='tout') return true;
+    var d=new Date((h.dateRaw||'2000-01')+'-01');
+    var months={'6m':6,'1a':12,'3a':36}[period]||6;
+    return (now-d)/(1000*60*60*24*30)<=months;
   });
-  // Sauvegarder
-  if(CLIENT) {
-    if(!CLIENT.parcoursData) CLIENT.parcoursData = {};
-    if(!CLIENT.parcoursData.connaissance) CLIENT.parcoursData.connaissance = {};
-    CLIENT.parcoursData.connaissance['risk-profile-value'] = profil;
-    CLIENT.parcoursData.connaissance['result-profile-graph'] = label;
-    saveLocal();
-  }
-  toast('Profil sélectionné : ' + label, 'success');
-};
+  drawChart(filtered.length>=2?filtered:all);
+}
 
-// Sélection radio-opt à la main (pour les boutons sans input visible)
-window.selectRiskProfile = function(el) {
-  if(!el) return;
-  // Désélectionner toutes les risk-cards
-  document.querySelectorAll('.risk-card').forEach(function(card) {
-    card.style.borderColor = 'rgba(255,255,255,0.1)';
-    card.style.background = 'rgba(255,255,255,0.03)';
-    card.classList.remove('selected');
-  });
-  // Sélectionner celle-ci
-  el.style.borderColor = '#c9a84c';
-  el.style.background = 'rgba(201,168,76,0.12)';
-  el.classList.add('selected');
-  // Sauvegarder le profil
-  var profil = el.getAttribute('data-profile');
-  var inp = document.getElementById('risk-profile-value');
-  if(inp) inp.value = profil;
-  var rg = document.getElementById('result-profile-graph');
-  var labelEl = el.querySelector('[style*="font-weight:700"]');
-  var label = labelEl ? labelEl.textContent : profil;
-  if(rg) rg.textContent = label;
-  if(CLIENT) {
-    if(!CLIENT.parcoursData) CLIENT.parcoursData = {};
-    if(!CLIENT.parcoursData.connaissance) CLIENT.parcoursData.connaissance = {};
-    CLIENT.parcoursData.connaissance['risk-profile-value'] = profil;
-    saveLocal();
-  }
-};
 
-// Gestion des radio-opts cliquables dans les questionnaires injectés
 function initRadioOpts(container){
   if(!container) return;
 
@@ -2181,6 +2182,9 @@ async function sendEmailJS(serviceId, templateId, params){
   }
   return response;
 }
+
+
+
 
 
 
@@ -2386,16 +2390,33 @@ async function sendEmailJS(serviceId, templateId, params){
       <div class="page" id="pg-reporting">
         <div class="ph" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
           <div><div class="pt">Performance du portefeuille</div><div class="ps">Évolution de la valeur de vos actifs</div></div>
-          <button class="btn btn-ghost btn-sm" onclick="loadReporting()" style="color:v
+          <button class="btn btn-ghost btn-sm" onclick="loadReporting()" style="color:var(--gold);border-color:var(--bdr-gold)">↻ Actualiser</button>
+        </div>
 
+        <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+          <div class="kpi"><div class="kpi-label">Valeur actuelle</div><div class="kpi-value" id="r-val">—</div><div class="kpi-sub" id="r-date"></div></div>
+          <div class="kpi"><div class="kpi-label">Performance YTD</div><div class="kpi-value" id="r-perf">—</div></div>
+          <div class="kpi"><div class="kpi-label">Profil</div><div class="kpi-value" id="r-profil" style="font-size:16px;margin-top:4px">—</div></div>
+        </div>
 
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="card-title" style="margin-bottom:0">Courbe de performance</div>
+            <div style="display:flex;gap:6px" id="period-btns">
+              <button onclick="setPeriod('6m',this)" class="btn btn-sm btn-primary btn-sm" style="padding:4px 10px;font-size:11px">6M</button>
+              <button onclick="setPeriod('1a',this)" class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:11px">1A</button>
+              <button onclick="setPeriod('tout',this)" class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:11px">Tout</button>
+            </div>
+          </div>
+          <div style="position:relative;height:220px">
+            <canvas id="ptf-chart"></canvas>
+            <div id="ptf-empty" style="display:none;position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text3)">
+              <div style="font-size:30px">📊</div>
+              <div style="font-size:13px;font-weight:500;color:var(--text2)">Aucune donnée de portefeuille</div>
+              <div style="font-size:11px;text-align:center;max-width:280px;line-height:1.6">Votre conseiller mettra à jour vos performances depuis le CRM.</div>
+            </div>
+          </div>
+        </div>
 
-
-
-
-
-
-
-
-</body>
-</html>
+        <div id="rep-detail"></div>
+      </div>
