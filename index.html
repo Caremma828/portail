@@ -801,6 +801,7 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;background:#0
 
 
 
+
 // ═══ CONFIG ═══
 var MSG_BIN='69efcf8736566621a8fb341e',CLIENTS_BIN='69efcc82856a6821897cc233',JBKEY='$2a$10$H/fTo.AwPWr.044IVk/qoOQeZHgnUicO63Oobmk2KqcOUB7LFSGym';
 var EJS_PUBLIC='cstVoAsfF9vn4uc6C',EJS_SERVICE='service_qz3nkkq',EJS_TPL='template_wmauhka',EJS_TPL_SIG='template_88jyjec',EJS_SERVICE_SIG='service_hp5456h';
@@ -1840,12 +1841,12 @@ function loadReporting(){
     var entry=data.messages&&data.messages[k];
     if(entry&&entry.patrimoine){
       CLIENT.patrimoine=entry.patrimoine;
-      // Historique peut être dans patrimoine.historique OU ptfHistory
       CLIENT.ptfHistory=entry.patrimoine.historique||entry.ptfHistory||CLIENT.ptfHistory||[];
       if(entry.profil) CLIENT.profil=entry.profil;
+      if(entry.ptfHistory&&entry.ptfHistory.length) CLIENT.ptfHistory=entry.ptfHistory;
       saveLocal();
-      renderReporting(CLIENT.patrimoine,CLIENT.ptfHistory);
-      renderKPIs();
+      // Attendre que le DOM soit visible avant de dessiner
+      setTimeout(function(){ renderReporting(CLIENT.patrimoine,CLIENT.ptfHistory); renderKPIs(); },100);
     } else {
       // Pas de données - afficher message d'invitation
       var wrap2=document.querySelector('.chart-wrap');
@@ -1882,17 +1883,18 @@ function renderReporting(p,history){
 function drawChart(history){
   var canvas=document.getElementById('ptf-chart');if(!canvas)return;
   var wrap=canvas.parentElement;
-  // Attendre que le canvas soit visible
-  var w=wrap.offsetWidth;
-  if(!w||w<100){
-    setTimeout(function(){drawChart(history);},200);
-    return;
-  }
-  canvas.width=w;canvas.height=180;
+  var w=wrap.offsetWidth||wrap.clientWidth||600;
+  if(!w||w<50){ setTimeout(function(){drawChart(history);},300); return; }
+  canvas.width=w; canvas.height=180;
+  // Détruire ancien chart Chart.js si existant
+  if(window._ptfChart){ try{window._ptfChart.destroy();}catch(e){} window._ptfChart=null; }
   var ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);
   if(!history||history.length<2){
-    ctx.fillStyle='rgba(143,170,191,0.4)';ctx.font='13px Inter,sans-serif';ctx.textAlign='center';
-    ctx.fillText('Données insuffisantes pour afficher le graphique',canvas.width/2,90);return;
+    ctx.fillStyle='rgba(143,170,191,0.5)';ctx.font='14px Georgia,serif';ctx.textAlign='center';
+    ctx.fillText('Aucune donnée de performance',canvas.width/2,70);
+    ctx.font='12px Inter,sans-serif';ctx.fillStyle='rgba(143,170,191,0.35)';
+    ctx.fillText('Votre conseiller mettra à jour vos données depuis le CRM',canvas.width/2,95);
+    return;
   }
   var vals=history.map(function(h){return+h.valeur||0;});
   var labels=history.map(function(h){return h.date||'';});
@@ -2175,6 +2177,7 @@ async function sendEmailJS(serviceId, templateId, params){
   }
   return response;
 }
+
 
 
 
