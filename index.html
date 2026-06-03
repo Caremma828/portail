@@ -1241,7 +1241,7 @@ async function sendSignAndSendCode(){
   _sendSigCode=Math.floor(100000+Math.random()*900000).toString();
   renderSignStep(2);
   try{
-    await sendEmailJS(EJS_SERVICE,EJS_TPL,{
+    await sendEmailJS(EJS_SERVICE,EJS_TPL_SIG,{
       to_email:CLIENT.email,to_name:CLIENT.prenom+' '+CLIENT.nom,
       from_name:'Caremma Finance',reply_to:'marc.reverseau@caremmafinance.com',
       client_prenom:CLIENT.prenom,access_code:_sendSigCode,
@@ -1481,7 +1481,7 @@ async function sendSigCode(){
   document.getElementById('sig-code').value='';
   document.getElementById('sig-err').style.display='none';
   try{
-    if(typeof emailjs!=='undefined')await sendEmailJS(EJS_SERVICE,EJS_TPL,{
+    await sendEmailJS(EJS_SERVICE,EJS_TPL_SIG,{
       to_email:CLIENT.email,to_name:CLIENT.prenom+' '+CLIENT.nom,
       from_name:'Caremma Finance',reply_to:'marc.reverseau@caremmafinance.com',
       client_prenom:CLIENT.prenom,access_code:_sigCode,
