@@ -802,6 +802,7 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;background:#0
 
 
 
+
 // ═══ CONFIG ═══
 var MSG_BIN='69efcf8736566621a8fb341e',CLIENTS_BIN='69efcc82856a6821897cc233',JBKEY='$2a$10$H/fTo.AwPWr.044IVk/qoOQeZHgnUicO63Oobmk2KqcOUB7LFSGym';
 var EJS_PUBLIC='cstVoAsfF9vn4uc6C',EJS_SERVICE='service_qz3nkkq',EJS_TPL='template_wmauhka',EJS_TPL_SIG='template_88jyjec',EJS_SERVICE_SIG='service_hp5456h';
@@ -1841,9 +1842,12 @@ function loadReporting(){
     var entry=data.messages&&data.messages[k];
     if(entry&&entry.patrimoine){
       CLIENT.patrimoine=entry.patrimoine;
-      CLIENT.ptfHistory=entry.patrimoine.historique||entry.ptfHistory||CLIENT.ptfHistory||[];
+      // Prendre l'historique le plus complet
+      var h1 = entry.patrimoine.historique||[];
+      var h2 = entry.ptfHistory||[];
+      CLIENT.ptfHistory = h1.length>=h2.length ? h1 : h2;
+      if(!CLIENT.ptfHistory.length) CLIENT.ptfHistory = CLIENT.ptfHistory||[];
       if(entry.profil) CLIENT.profil=entry.profil;
-      if(entry.ptfHistory&&entry.ptfHistory.length) CLIENT.ptfHistory=entry.ptfHistory;
       saveLocal();
       // Attendre que le DOM soit visible avant de dessiner
       setTimeout(function(){ renderReporting(CLIENT.patrimoine,CLIENT.ptfHistory); renderKPIs(); },100);
@@ -2177,6 +2181,7 @@ async function sendEmailJS(serviceId, templateId, params){
   }
   return response;
 }
+
 
 
 
