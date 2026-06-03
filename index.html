@@ -983,7 +983,9 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;background:#0
 
 
 
+
 <script>
+
 
 
 
@@ -1559,7 +1561,7 @@ async function generateAndSendRecap(sigData,sigDate){
     +'<div style="font-size:8pt;color:#8a9ab5;margin-top:3px">Signature électronique validée par code email</div>'
     +'</div>'
     +'<div class="ftr">Caremma Finance SAS · ORIAS 24007767 · Document confidentiel · '+today2+'</div>'
-    +'</body></html>';
+    +'<\/body><\/html>';
   var blob=new Blob([html],{type:'text/html'});
   var url=URL.createObjectURL(blob);
   var win=window.open(url,'_blank');
@@ -2164,7 +2166,7 @@ async function generateRecapPDF(){
   Ce document a été généré automatiquement le ${today} · Confidentiel
 </div>
 
-</body></html>`;
+<\/body></html>`;
 
   // Injecter les scores depuis le DOM
   var scoreConn = document.getElementById('q-score-val')||document.getElementById('result-score-kn');
@@ -2283,6 +2285,7 @@ async function sendEmailJS(serviceId, templateId, params){
   }
   return response;
 }
+
 
 </script>
 </body>
