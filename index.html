@@ -806,6 +806,10 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;background:#0
 
 
 
+
+
+
+
 // ═══ CONFIG ═══
 var MSG_BIN='69efcf8736566621a8fb341e',CLIENTS_BIN='69efcc82856a6821897cc233',JBKEY='$2a$10$H/fTo.AwPWr.044IVk/qoOQeZHgnUicO63Oobmk2KqcOUB7LFSGym';
 var EJS_PUBLIC='cstVoAsfF9vn4uc6C',EJS_SERVICE='service_qz3nkkq',EJS_TPL='template_wmauhka',EJS_TPL_SIG='template_88jyjec',EJS_SERVICE_SIG='service_hp5456h';
@@ -842,7 +846,7 @@ function saveLocal(){
   if(!CLIENT)return;
   try{
     var slim=JSON.parse(JSON.stringify(CLIENT));
-    // Exclure les données volumineuses
+    // Exclure seulement les données binaires (signatures, fichiers uploadés)
     if(slim.parcoursData){
       Object.keys(slim.parcoursData).forEach(function(k){
         if(k.indexOf('signature')>=0) delete slim.parcoursData[k];
@@ -851,6 +855,9 @@ function saveLocal(){
     if(slim.docs) slim.docs=slim.docs.map(function(d){
       var dd=Object.assign({},d); delete dd.data; delete dd.signature; return dd;
     });
+    // Garder patrimoine et ptfHistory (pas trop volumineux)
+    slim.patrimoine = CLIENT.patrimoine||{};
+    slim.ptfHistory = CLIENT.ptfHistory||[];
     localStorage.setItem('caremma_c_'+eKey(CLIENT.email),JSON.stringify(slim));
     showSave();
   }catch(e){
@@ -1016,11 +1023,27 @@ function goPage(name,navEl){
     if(window._msgRefresh){ clearInterval(window._msgRefresh); window._msgRefresh=null; }
   }
   if(name==='reporting'){
-    loadReporting();
+    // D'abord rendre visible, PUIS charger et dessiner
     setTimeout(function(){
+      loadReporting();
+      // Dessiner avec les données déjà en mémoire
       var h=window._pendingHistory||(CLIENT&&CLIENT.ptfHistory)||[];
-      if(h.length>=2) drawChart(h);
-    },300);
+      if(h.length>=2){
+        setTimeout(function(){ drawChart(h); },100);
+      }
+    },50);
+    // Auto-refresh 30s
+    if(window._repRefresh) clearInterval(window._repRefresh);
+    window._repRefresh=setInterval(function(){
+      var pg=document.getElementById('pg-reporting');
+      if(pg&&pg.classList.contains('active')){
+        loadReporting();
+      } else {
+        clearInterval(window._repRefresh);window._repRefresh=null;
+      }
+    },30000);
+  } else {
+    if(window._repRefresh){clearInterval(window._repRefresh);window._repRefresh=null;}
   }
 }
 
@@ -1896,130 +1919,117 @@ function renderReporting(p,history){
 
 function drawChart(history){
   if(history&&history.length) window._pendingHistory=history;
-  var canvas=document.getElementById('ptf-chart');
-  var emptyEl=document.getElementById('ptf-empty');
-  if(!canvas){return;}
+  var h = window._pendingHistory||[];
+  var canvas = document.getElementById('ptf-chart');
+  var emptyEl = document.getElementById('ptf-empty');
+  if(!canvas) return;
 
-  var data=window._pendingHistory||history||[];
-
-  if(!data||data.length<2){
+  if(!h||h.length<2){
+    if(emptyEl){emptyEl.style.display='flex';}
     canvas.style.display='none';
-    if(emptyEl) emptyEl.style.display='flex';
     return;
   }
   canvas.style.display='block';
   if(emptyEl) emptyEl.style.display='none';
 
-  // Détruire ancien chart
+  // Reset dimensions
+  canvas.removeAttribute('width');
+  canvas.removeAttribute('height');
+
+  var base = h[0].valeur||1;
+  var perfs = h.map(function(x){ return parseFloat(((x.valeur-base)/base*100).toFixed(2)); });
+
   if(window._ptfChart){try{window._ptfChart.destroy();}catch(e){} window._ptfChart=null;}
 
-  var labels=data.map(function(h){return h.date||h.dateRaw||'';});
-  var values=data.map(function(h){return+h.valeur||0;});
-  var minV=Math.min.apply(null,values);
-  var maxV=Math.max.apply(null,values);
-
-  // Couleur selon tendance
-  var isPos = values[values.length-1] >= values[0];
-  var lineColor = isPos ? '#22c55e' : '#ef4444';
-  var fillColor = isPos ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)';
-
-  var ctx=canvas.getContext('2d');
-
-  // Utiliser Chart.js si disponible
-  if(typeof Chart!=='undefined'){
-    window._ptfChart=new Chart(ctx,{
-      type:'line',
-      data:{
-        labels:labels,
-        datasets:[{
+  window._ptfChart = new Chart(canvas.getContext('2d'),{
+    type:'line',
+    data:{
+      labels: h.map(function(x){return x.date||x.dateRaw||'';}),
+      datasets:[
+        {
           label:'Valeur (€)',
-          data:values,
+          data: h.map(function(x){return x.valeur;}),
           borderColor:'#c9a84c',
-          backgroundColor:'rgba(201,168,76,0.08)',
+          backgroundColor:'rgba(201,168,76,0.1)',
           borderWidth:2.5,
           pointBackgroundColor:'#e8c96a',
           pointRadius:4,
           pointHoverRadius:6,
           fill:true,
-          tension:0.3
-        }]
-      },
-      options:{
-        responsive:true,
-        maintainAspectRatio:false,
-        plugins:{
-          legend:{display:false},
-          tooltip:{
-            callbacks:{
-              label:function(ctx2){
-                return fmt(ctx2.parsed.y);
-              }
-            }
-          }
+          tension:0.3,
+          yAxisID:'yVal'
         },
-        scales:{
-          x:{
-            grid:{color:'rgba(255,255,255,0.05)'},
-            ticks:{color:'rgba(143,170,191,0.7)',font:{size:10}}
-          },
-          y:{
-            grid:{color:'rgba(255,255,255,0.05)'},
-            ticks:{
-              color:'rgba(143,170,191,0.7)',
-              font:{size:10},
-              callback:function(v){
-                return (v/1000).toFixed(0)+'K€';
-              }
-            }
-          }
+        {
+          label:'Perf. (%)',
+          data: perfs,
+          borderColor:'rgba(34,197,94,0.9)',
+          backgroundColor:'transparent',
+          borderWidth:2,
+          borderDash:[5,4],
+          pointRadius:3,
+          pointBackgroundColor:'#22c55e',
+          fill:false,
+          tension:0.3,
+          yAxisID:'yPerf'
+        }
+      ]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:true,position:'top',labels:{color:'rgba(200,216,232,0.8)',font:{size:11},usePointStyle:true}},
+        tooltip:{callbacks:{label:function(c){
+          if(c.dataset.yAxisID==='yVal') return ' '+fmt(c.parsed.y);
+          return ' '+(c.parsed.y>=0?'+':'')+c.parsed.y.toFixed(2)+'%';
+        }}}
+      },
+      scales:{
+        x:{
+          grid:{color:'rgba(255,255,255,0.04)'},
+          ticks:{color:'rgba(143,170,191,0.7)',font:{size:10},maxTicksLimit:12,maxRotation:45},
+          title:{display:true,text:'Mois',color:'rgba(143,170,191,0.4)',font:{size:10}}
+        },
+        yVal:{
+          position:'left',
+          grid:{color:'rgba(255,255,255,0.04)'},
+          ticks:{color:'rgba(201,168,76,0.8)',font:{size:10},callback:function(v){
+            return v>=1e6?(v/1e6).toFixed(1)+'M€':v>=1000?(v/1000).toFixed(0)+'K€':v+'€';
+          }},
+          title:{display:true,text:'Valeur (€)',color:'rgba(201,168,76,0.5)',font:{size:10}}
+        },
+        yPerf:{
+          position:'right',
+          grid:{drawOnChartArea:false},
+          ticks:{color:'rgba(34,197,94,0.7)',font:{size:10},callback:function(v){return (v>=0?'+':'')+v.toFixed(1)+'%';}},
+          title:{display:true,text:'Perf. (%)',color:'rgba(34,197,94,0.5)',font:{size:10}}
         }
       }
-    });
-    return;
-  }
-
-  // Fallback canvas natif si Chart.js pas dispo
-  var W=canvas.width=canvas.parentElement.offsetWidth||600;
-  var H=canvas.height=200;
-  ctx.clearRect(0,0,W,H);
-  var M={l:60,r:20,t:15,b:30};
-  var cw=W-M.l-M.r, ch=H-M.t-M.b;
-  var range=maxV-minV||1;
-
-  // Aire
-  var grd=ctx.createLinearGradient(0,M.t,0,M.t+ch);
-  grd.addColorStop(0,'rgba(201,168,76,0.25)');
-  grd.addColorStop(1,'rgba(201,168,76,0)');
-  ctx.beginPath();
-  data.forEach(function(h,i){
-    var x=M.l+cw*(i/(data.length-1));
-    var y=M.t+ch*(1-(+h.valeur-minV)/range);
-    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
-  });
-  ctx.lineTo(M.l+cw,M.t+ch);ctx.lineTo(M.l,M.t+ch);ctx.closePath();
-  ctx.fillStyle=grd;ctx.fill();
-
-  // Ligne
-  ctx.beginPath();
-  data.forEach(function(h,i){
-    var x=M.l+cw*(i/(data.length-1));
-    var y=M.t+ch*(1-(+h.valeur-minV)/range);
-    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
-  });
-  ctx.strokeStyle='#c9a84c';ctx.lineWidth=2.5;ctx.stroke();
-
-  // Points
-  data.forEach(function(h,i){
-    var x=M.l+cw*(i/(data.length-1));
-    var y=M.t+ch*(1-(+h.valeur-minV)/range);
-    ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);
-    ctx.fillStyle='#e8c96a';ctx.fill();
-    if(i===0||i===data.length-1){
-      ctx.fillStyle='rgba(143,170,191,0.8)';ctx.font='9px Inter,sans-serif';ctx.textAlign='center';
-      ctx.fillText(h.date||'',x,H-8);
     }
   });
 }
+
+// Filtre période
+function setPeriod(period,btn){
+  if(btn){
+    document.querySelectorAll('#period-btns button').forEach(function(b){
+      b.style.background='transparent';b.style.color='var(--text3)';b.style.border='1px solid var(--bdr)';
+    });
+    btn.style.background='var(--gold)';btn.style.color='#0c1a2e';btn.style.border='none';
+  }
+  var all=window._pendingHistory||CLIENT.ptfHistory||[];
+  if(!all.length){drawChart([]);return;}
+  var now=new Date();
+  var filtered=all.filter(function(h){
+    if(period==='tout') return true;
+    var d=new Date((h.dateRaw||'2000-01')+'-01');
+    var months={'6m':6,'1a':12,'3a':36}[period]||999;
+    return (now-d)/(1000*60*60*24*30)<=months;
+  });
+  drawChart(filtered.length>=2?filtered:all);
+}
+
 
 // Filtre période
 function setPeriod(period, btn){
@@ -2192,7 +2202,11 @@ async function sendEmailJS(serviceId, templateId, params){
 
 
 
+
+
+
 </script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 <div id="toast-wrap"></div>
