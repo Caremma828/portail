@@ -1080,16 +1080,121 @@ function renderKPIs(){
 function syncMessages(){
   jbGet(MSG_BIN).then(function(data){
     var k=eKey(CLIENT.email);
-    if(data.messages&&data.messages[k]&&data.messages[k].msgs){
-      var remote=data.messages[k].msgs;
-      var ids=new Set((CLIENT.msgs||[]).map(function(m){return m.id;}));
-      remote.forEach(function(m){if(!ids.has(m.id)){if(!CLIENT.msgs)CLIENT.msgs=[];CLIENT.msgs.push(m);ids.add(m.id);}});
-      saveLocal();renderMsgs();renderKPIs();
-      var unread=(CLIENT.msgs||[]).filter(function(m){return m.from!=='client'&&!m.read;}).length;
-      var b=document.getElementById('msg-badge');
-      if(b){b.textContent=unread;b.style.display=unread?'inline':'none';}
+    var entry=data.messages&&data.messages[k];
+    if(!entry)return;
+
+    // ── Sync messages (déduplication robuste par id ou texte+date)
+    if(entry.msgs){
+      var remote=entry.msgs;
+      var ids=new Set((CLIENT.msgs||[]).filter(function(m){return m.id;}).map(function(m){return String(m.id);}));
+      var textKeys=new Set((CLIENT.msgs||[]).map(function(m){return (m.text||'')+'|'+(m.date||'');}));
+      remote.forEach(function(m){
+        var uid=m.id?String(m.id):null;
+        var tkey=(m.text||'')+'|'+(m.date||'');
+        if(uid){
+          if(!ids.has(uid)){if(!CLIENT.msgs)CLIENT.msgs=[];CLIENT.msgs.push(m);ids.add(uid);}
+        } else {
+          if(!textKeys.has(tkey)){if(!CLIENT.msgs)CLIENT.msgs=[];CLIENT.msgs.push(m);textKeys.add(tkey);}
+        }
+      });
     }
+
+    // ── Sync documents envoyés par le conseiller
+    if(entry.docs){
+      var remoteDocs=entry.docs;
+      var docIds=new Set((CLIENT.docs||[]).map(function(d){return String(d.id);}));
+      remoteDocs.forEach(function(d){
+        if(!docIds.has(String(d.id))){
+          if(!CLIENT.docs)CLIENT.docs=[];
+          CLIENT.docs.push(d);
+          docIds.add(String(d.id));
+        }
+      });
+    }
+
+    // ── Sync patrimoine (pour les KPIs de performance)
+    if(entry.patrimoine){
+      CLIENT.patrimoine=entry.patrimoine;
+      if(entry.patrimoine.historique)CLIENT.ptfHistory=entry.patrimoine.historique;
+      else if(entry.ptfHistory)CLIENT.ptfHistory=entry.ptfHistory;
+    }
+    if(entry.profil)CLIENT.profil=entry.profil;
+
+    saveLocal();
+    renderMsgs();
+    renderKPIs();
+    renderDocs();
+
+    var unread=(CLIENT.msgs||[]).filter(function(m){return m.from!=='client'&&!m.read;}).length;
+    var b=document.getElementById('msg-badge');
+    if(b){b.textContent=unread;b.style.display=unread?'inline':'none';}
+    var db=document.getElementById('doc-badge');
+    var pendingDocs=(CLIENT.docs||[]).filter(function(d){return d.status==='pending';}).length;
+    if(db){db.textContent=pendingDocs;db.style.display=pendingDocs?'inline':'none';}
   }).catch(function(){});
+}
+
+// ═══ DOCUMENTS ═══
+function renderDocs(){
+  var el=document.getElementById('docs-list');if(!el)return;
+  var docs=CLIENT.docs||[];
+  if(!docs.length){
+    el.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text3)">'
+      +'<div style="font-size:36px;margin-bottom:12px">📂</div>'
+      +'<div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px">Aucun document pour le moment</div>'
+      +'<div style="font-size:12px;line-height:1.6">Votre conseiller vous enverra des documents à signer depuis le CRM.</div>'
+      +'</div>';
+    return;
+  }
+  var statusLabel={pending:'⏳ En attente de signature',signed:'✅ Signé','':'📄 Document'};
+  var statusColor={pending:'var(--orange)',signed:'var(--green)','':'var(--text2)'};
+  el.innerHTML=docs.map(function(d){
+    var signed=d.status==='signed';
+    return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);'
+      +'border:1.5px solid '+(d.status==='pending'?'var(--gold)':signed?'rgba(34,197,94,.3)':'var(--bdr-gold)')+';'
+      +'border-radius:10px;margin-bottom:10px">'
+      +'<div style="font-size:26px;flex-shrink:0">'+(signed?'✅':d.status==='pending'?'📋':'📄')+'</div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13px;font-weight:600;color:var(--text1);margin-bottom:2px">'+escH(d.nom)+'</div>'
+        +'<div style="font-size:11px;color:var(--text3)">'+escH(d.date||'')+(d.cat?' · '+escH(d.cat):'')+'</div>'
+      +'</div>'
+      +'<div style="flex-shrink:0;text-align:right">'
+        +'<div style="font-size:11px;font-weight:600;color:'+(statusColor[d.status]||statusColor[''])+';margin-bottom:6px">'+(statusLabel[d.status]||'')+'</div>'
+        +(d.status==='pending'?'<button onclick="openDocSig(\''+escH(d.id)+'\')" class="btn btn-gold btn-sm" style="font-size:11px;padding:5px 12px">✍️ Signer</button>':'')
+        +(signed&&d.signatureDate?'<div style="font-size:10px;color:var(--text3);margin-top:3px">le '+escH(d.signatureDate)+'</div>':'')
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function openDocSig(docId){
+  var doc=(CLIENT.docs||[]).find(function(d){return String(d.id)===String(docId);});
+  if(!doc){toast('Document introuvable','error');return;}
+  _sigDoc=doc;
+  var z=document.getElementById('sig-zone');
+  if(!z){toast('Zone de signature introuvable','error');return;}
+  z.style.display='block';
+  z.innerHTML='<div style="background:var(--surface);border:1.5px solid var(--bdr-gold);border-radius:12px;padding:20px;margin-top:12px">'
+    +'<div style="font-size:14px;font-weight:600;color:var(--gold2);margin-bottom:4px">✍️ Signature requise</div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:14px">'+escH(doc.nom)+'</div>'
+    +'<canvas id="sig-canvas" class="sig-canvas" width="400" height="120" style="width:100%;max-width:400px;height:120px;cursor:crosshair;background:white;border-radius:6px;border:1px solid var(--bdr-gold)"></canvas>'
+    +'<div style="display:flex;gap:8px;margin-top:10px">'
+      +'<button onclick="clearSig()" class="btn btn-outline btn-sm">Effacer</button>'
+      +'<button onclick="confirmSig()" class="btn btn-gold btn-sm">Valider ma signature ✓</button>'
+      +'<button onclick="closeSig()" class="btn btn-outline btn-sm">Annuler</button>'
+    +'</div>'
+    +'</div>';
+  // Init canvas
+  var canvas=document.getElementById('sig-canvas');
+  _sigCtx=canvas.getContext('2d');_sigDrawing=false;
+  canvas.addEventListener('mousedown',function(e){_sigDrawing=true;_sigCtx.beginPath();_sigCtx.moveTo(e.offsetX,e.offsetY);});
+  canvas.addEventListener('mousemove',function(e){if(!_sigDrawing)return;_sigCtx.lineTo(e.offsetX,e.offsetY);_sigCtx.stroke();});
+  canvas.addEventListener('mouseup',function(){_sigDrawing=false;});
+  canvas.addEventListener('mouseleave',function(){_sigDrawing=false;});
+  canvas.addEventListener('touchstart',function(e){e.preventDefault();_sigDrawing=true;var t=e.touches[0];var r=canvas.getBoundingClientRect();_sigCtx.beginPath();_sigCtx.moveTo(t.clientX-r.left,t.clientY-r.top);},{passive:false});
+  canvas.addEventListener('touchmove',function(e){e.preventDefault();if(!_sigDrawing)return;var t=e.touches[0];var r=canvas.getBoundingClientRect();_sigCtx.lineTo(t.clientX-r.left,t.clientY-r.top);_sigCtx.stroke();},{passive:false});
+  canvas.addEventListener('touchend',function(){_sigDrawing=false;});
+  _sigCtx.lineWidth=1.5;_sigCtx.strokeStyle='#0A1628';_sigCtx.lineCap='round';
 }
 
 function renderMsgs(){
@@ -1875,23 +1980,23 @@ function loadReporting(){
     if(entry&&entry.patrimoine){
       CLIENT.patrimoine=entry.patrimoine;
       // Prendre l'historique le plus complet
-      // Historique depuis patrimoine.historique (source principale)
       CLIENT.ptfHistory = entry.patrimoine.historique
         || entry.ptfHistory
         || CLIENT.ptfHistory || [];
       if(entry.profil) CLIENT.profil=entry.profil;
-      console.log('ptfHistory chargé:', CLIENT.ptfHistory.length, 'points');
       saveLocal();
       // Attendre que le DOM soit visible avant de dessiner
       setTimeout(function(){ renderReporting(CLIENT.patrimoine,CLIENT.ptfHistory); renderKPIs(); },100);
     } else {
-      // Pas de données - afficher message d'invitation
+      // Pas de données patrimoine dans JSONBin — afficher message invitation
       var wrap2=document.querySelector('.chart-wrap');
       if(wrap2) wrap2.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--text3);text-align:center">'
         +'<div style="font-size:30px">📊</div>'
         +'<div style="font-size:14px;font-weight:500;color:var(--text2)">Aucune donnée de portefeuille</div>'
         +'<div style="font-size:12px;max-width:300px;line-height:1.6">Votre conseiller mettra à jour vos performances depuis le CRM.</div>'
         +'</div>';
+      // Mettre à jour les KPIs même sans patrimoine (affiche — pour perf)
+      renderKPIs();
     }
   }).catch(function(e){
     console.warn('Reporting:',e);
@@ -2275,7 +2380,7 @@ async function sendEmailJS(serviceId, templateId, params){
       <div class="sb-section">Mon dossier</div>
       <div class="nav-item" id="nav-objectifs" onclick="goPage('objectifs',this)"><span class="nav-icon">🎯</span>Questionnaire objectifs</div>
       <div class="nav-item" id="nav-connaissance" onclick="goPage('connaissance',this)"><span class="nav-icon">📊</span>Connaissance & compétence</div>
-      <div class="nav-item" id="nav-documents" onclick="goPage('documents',this)"><span class="nav-icon">📁</span>Mes documents</div>
+      <div class="nav-item" id="nav-documents" onclick="goPage('documents',this)"><span class="nav-icon">📁</span>Mes documents <span id="doc-badge" style="display:none;background:var(--gold);color:var(--navy);font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:4px"></span></div>
       <div class="sb-section">Portefeuille</div>
       <div class="nav-item" id="nav-reporting" onclick="goPage('reporting',this)"><span class="nav-icon">📈</span>Performance</div>
     </div>
