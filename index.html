@@ -1174,27 +1174,44 @@ function openDocSig(docId){
   var z=document.getElementById('sig-zone');
   if(!z){toast('Zone de signature introuvable','error');return;}
   z.style.display='block';
+
+  // Bouton "Voir le document" si c'est un doc questionnaire
+  var previewBtn='';
+  if(doc.docType){
+    var docKeyMap={objectifs:'objectifs',connaissance:'connaissance',entree:'objectifs',adequation:'connaissance'};
+    var previewKey=docKeyMap[doc.docType]||doc.docType;
+    previewBtn='<button onclick="openRecapAndMail(null,null,\''+previewKey+'\')" class="btn btn-outline btn-sm" style="font-size:11px">👁 Voir le document</button>';
+  }
+
   z.innerHTML='<div style="background:var(--surface);border:1.5px solid var(--bdr-gold);border-radius:12px;padding:20px;margin-top:12px">'
-    +'<div style="font-size:14px;font-weight:600;color:var(--gold2);margin-bottom:4px">✍️ Signature requise</div>'
-    +'<div style="font-size:12px;color:var(--text3);margin-bottom:14px">'+escH(doc.nom)+'</div>'
-    +'<canvas id="sig-canvas" class="sig-canvas" width="400" height="120" style="width:100%;max-width:400px;height:120px;cursor:crosshair;background:white;border-radius:6px;border:1px solid var(--bdr-gold)"></canvas>'
-    +'<div style="display:flex;gap:8px;margin-top:10px">'
-      +'<button onclick="clearSig()" class="btn btn-outline btn-sm">Effacer</button>'
-      +'<button onclick="confirmSig()" class="btn btn-gold btn-sm">Valider ma signature ✓</button>'
-      +'<button onclick="closeSig()" class="btn btn-outline btn-sm">Annuler</button>'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+      +'<div style="font-size:22px">📋</div>'
+      +'<div><div style="font-size:14px;font-weight:600;color:var(--gold2)">Signature requise</div>'
+        +'<div style="font-size:11px;color:var(--text3);margin-top:1px">'+escH(doc.nom)+'</div>'
+      +'</div>'
+      +(previewBtn?'<div style="margin-left:auto">'+previewBtn+'</div>':'')
+    +'</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px;padding:8px 10px;background:rgba(201,168,76,.06);border-radius:6px;border-left:2px solid var(--gold)">Tracez votre signature dans la zone ci-dessous, puis cliquez "Valider". Le document signé vous sera téléchargeable et sera automatiquement envoyé à votre conseiller.</div>'
+    +'<canvas id="sig-canvas" width="600" height="140" style="width:100%;height:140px;cursor:crosshair;background:white;border-radius:6px;border:1.5px solid var(--bdr-gold);display:block"></canvas>'
+    +'<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
+      +'<button onclick="clearSig()" class="btn btn-outline btn-sm">🗑 Effacer</button>'
+      +'<button onclick="confirmSig()" class="btn btn-gold" style="padding:7px 16px;font-size:12px">✅ Valider ma signature</button>'
+      +'<button onclick="closeSig()" class="btn btn-outline btn-sm" style="margin-left:auto">Annuler</button>'
     +'</div>'
     +'</div>';
   // Init canvas
   var canvas=document.getElementById('sig-canvas');
   _sigCtx=canvas.getContext('2d');_sigDrawing=false;
-  canvas.addEventListener('mousedown',function(e){_sigDrawing=true;_sigCtx.beginPath();_sigCtx.moveTo(e.offsetX,e.offsetY);});
-  canvas.addEventListener('mousemove',function(e){if(!_sigDrawing)return;_sigCtx.lineTo(e.offsetX,e.offsetY);_sigCtx.stroke();});
+  _sigCtx.lineWidth=2;_sigCtx.strokeStyle='#0A1628';_sigCtx.lineCap='round';_sigCtx.lineJoin='round';
+  function getXY(e,c){var r=c.getBoundingClientRect();return[(e.clientX-r.left)*(c.width/r.width),(e.clientY-r.top)*(c.height/r.height)];}
+  canvas.addEventListener('mousedown',function(e){_sigDrawing=true;var p=getXY(e,canvas);_sigCtx.beginPath();_sigCtx.moveTo(p[0],p[1]);});
+  canvas.addEventListener('mousemove',function(e){if(!_sigDrawing)return;var p=getXY(e,canvas);_sigCtx.lineTo(p[0],p[1]);_sigCtx.stroke();});
   canvas.addEventListener('mouseup',function(){_sigDrawing=false;});
   canvas.addEventListener('mouseleave',function(){_sigDrawing=false;});
-  canvas.addEventListener('touchstart',function(e){e.preventDefault();_sigDrawing=true;var t=e.touches[0];var r=canvas.getBoundingClientRect();_sigCtx.beginPath();_sigCtx.moveTo(t.clientX-r.left,t.clientY-r.top);},{passive:false});
-  canvas.addEventListener('touchmove',function(e){e.preventDefault();if(!_sigDrawing)return;var t=e.touches[0];var r=canvas.getBoundingClientRect();_sigCtx.lineTo(t.clientX-r.left,t.clientY-r.top);_sigCtx.stroke();},{passive:false});
+  canvas.addEventListener('touchstart',function(e){e.preventDefault();_sigDrawing=true;var t=e.touches[0];var p=getXY(t,canvas);_sigCtx.beginPath();_sigCtx.moveTo(p[0],p[1]);},{passive:false});
+  canvas.addEventListener('touchmove',function(e){e.preventDefault();if(!_sigDrawing)return;var t=e.touches[0];var p=getXY(t,canvas);_sigCtx.lineTo(p[0],p[1]);_sigCtx.stroke();},{passive:false});
   canvas.addEventListener('touchend',function(){_sigDrawing=false;});
-  _sigCtx.lineWidth=1.5;_sigCtx.strokeStyle='#0A1628';_sigCtx.lineCap='round';
+  canvas.scrollIntoView({behavior:'smooth',block:'center'});
 }
 
 function renderMsgs(){
@@ -1854,7 +1871,9 @@ function openRecapAndMail(sigData, sigDate, key){
     +'<div class="sec" style="margin-top:8px"><div class="sec-title">Signature Électronique</div>'
     +'<div class="sig-box">'
     +'<div style="font-size:8.5pt;color:#5a6a7a;margin-bottom:10px;line-height:1.5">Je soussigné(e) <strong>'+CLIENT.prenom+' '+CLIENT.nom+'</strong> certifie l\'exactitude et l\'exhaustivité des informations fournies dans ce questionnaire, et consens au traitement de ces données par Caremma Finance dans le cadre de la relation de conseil en investissement.</div>'
-    +'<div class="sig-canvas-box">Signature électronique manuscrite du client</div>'
+    +(sigData
+        ? '<div class="sig-canvas-box" style="height:auto;padding:8px;font-style:normal;color:inherit"><img src="'+sigData+'" style="height:70px;max-width:300px;object-fit:contain;display:block;margin:0 auto;border-radius:2px"></div>'
+        : '<div class="sig-canvas-box">Signature non disponible</div>')
     +'<div style="display:flex;justify-content:space-between;margin-top:6px">'
     +'<div><div style="font-size:9pt;font-weight:bold;color:#0f1e35">'+CLIENT.prenom+' '+CLIENT.nom+'</div>'
     +'<div style="font-size:8pt;color:#8a9ab5">'+CLIENT.email+'</div></div>'
@@ -1877,27 +1896,35 @@ function openRecapAndMail(sigData, sigDate, key){
     win.document.write(H);
     win.document.close();
     win.focus();
-    setTimeout(function(){
-      var subject = encodeURIComponent('Questionnaire signé — '+CLIENT.prenom+' '+CLIENT.nom+' — '+today2);
-      var bodyParts = [
-        'Bonjour Marc,',
-        '',
-        'Veuillez trouver en pièce jointe mon questionnaire complété et signé électroniquement.',
-        '',
-        'Client : '+CLIENT.prenom+' '+CLIENT.nom,
-        'Email : '+CLIENT.email,
-        'Signé le : '+(sigDate||today2),
-        'Score connaissance : '+(sc?sc.textContent:'—'),
-        'Profil de risque : '+(cr?cr.textContent:'—'),
-        '',
-        'Pour joindre le PDF : dans la fenêtre ouverte, cliquez "Sauvegarder en PDF", puis joignez le fichier à cet email.',
-        '',
-        'Cordialement,',
-        CLIENT.prenom+' '+CLIENT.nom
-      ];
-      var body = encodeURIComponent(bodyParts.join('\n'));
-      window.location.href = 'mailto:marc.reverseau@caremmafinance.com?subject='+subject+'&body='+body;
-    }, 1500);
+    // Déclencher le mail UNIQUEMENT si sigData fourni (= doc vraiment signé)
+    if(sigData){
+      setTimeout(function(){
+        var subject = encodeURIComponent('Document signé — '+CLIENT.prenom+' '+CLIENT.nom+' — '+today2);
+        var bodyParts = [
+          'Bonjour Marc,',
+          '',
+          CLIENT.prenom+' '+CLIENT.nom+' a signé son questionnaire Caremma Finance.',
+          '',
+          '• Client : '+CLIENT.prenom+' '+CLIENT.nom,
+          '• Email : '+CLIENT.email,
+          '• Signé le : '+(sigDate||today2),
+          '• Score connaissance : '+(sc?sc.textContent:'—'),
+          '• Profil de risque : '+(cr?cr.textContent:'—'),
+          '',
+          '──────────────────────────────────',
+          'INSTRUCTIONS POUR JOINDRE LE PDF :',
+          '1. Dans la fenêtre ouverte, cliquez le bouton "🖨️ Sauvegarder en PDF" en bas à droite',
+          '2. Choisissez "Enregistrer au format PDF" comme imprimante',
+          '3. Joignez ce PDF à cet email avant de l\'envoyer',
+          '──────────────────────────────────',
+          '',
+          'Cordialement,',
+          CLIENT.prenom+' '+CLIENT.nom
+        ];
+        var body = encodeURIComponent(bodyParts.join('\n'));
+        window.location.href = 'mailto:marc.reverseau@caremmafinance.com?subject='+subject+'&body='+body;
+      }, 1500);
+    }
   }
 }
 
@@ -1955,18 +1982,46 @@ function confirmSig(){
   if(!ok){toast('Veuillez tracer votre signature','error');return;}
   var sigData=canvas.toDataURL('image/png');
   var sigDate=new Date().toLocaleString('fr-FR');
+  var signedDoc=_sigDoc; // keep reference before closeSig clears _sigDoc
   _sigDoc.signature=sigData;_sigDoc.signatureDate=sigDate;_sigDoc.status='signed';
   saveLocal();renderDocs();closeSig();
-  toast('✅ Document signé le '+sigDate,'success');
+  toast('✅ Document signé — ouverture du récapitulatif...','success');
+
+  // ── Sync signature dans JSONBin (le conseiller verra la signature)
   jbGet(MSG_BIN).then(function(d){
     var k=eKey(CLIENT.email);
-    if(!d.messages||!d.messages[k])return;
+    if(!d.messages)d.messages={};
+    if(!d.messages[k])d.messages[k]={prenom:CLIENT.prenom,nom:CLIENT.nom,email:CLIENT.email,msgs:[],docs:[]};
     var docs=d.messages[k].docs||[];
-    var idx=docs.findIndex(function(x){return x.id===_sigDoc.id;});
-    var entry={id:_sigDoc.id,signature:sigData,signatureDate:sigDate,status:'signed'};
+    var idx=docs.findIndex(function(x){return String(x.id)===String(signedDoc.id);});
+    var entry={id:signedDoc.id,nom:signedDoc.nom,docType:signedDoc.docType||'',
+      signature:sigData,signatureDate:sigDate,status:'signed'};
     if(idx>=0)docs[idx]=Object.assign(docs[idx],entry);else docs.push(entry);
-    d.messages[k].docs=docs;return jbPut(MSG_BIN,d);
+    d.messages[k].docs=docs;
+    // Message de notification au conseiller
+    if(!d.messages[k].msgs)d.messages[k].msgs=[];
+    d.messages[k].msgs.push({id:Date.now(),from:'client',
+      text:'✅ J\'ai signé le document "'+signedDoc.nom+'" le '+sigDate+'. Le PDF signé a été généré.',
+      date:new Date().toLocaleDateString('fr-FR'),read:false});
+    return jbPut(MSG_BIN,d);
   }).catch(function(){});
+
+  // ── Générer le PDF récapitulatif avec la signature et ouvrir l'email
+  var docKeyMap={objectifs:'objectifs',connaissance:'connaissance',entree:'objectifs',adequation:'connaissance'};
+  var recapKey=signedDoc.docType?docKeyMap[signedDoc.docType]||signedDoc.docType:null;
+  setTimeout(function(){
+    if(recapKey){
+      // Ouvrir le récap avec la signature incluse
+      openRecapAndMail(sigData, sigDate, recapKey);
+    } else {
+      // Pas de questionnaire lié : juste email de notification
+      var today2=new Date().toLocaleDateString('fr-FR',{year:'numeric',month:'long',day:'numeric'});
+      var subject=encodeURIComponent('Document signé — '+signedDoc.nom+' — '+CLIENT.prenom+' '+CLIENT.nom);
+      var bodyTxt=['Bonjour Marc,','',''+CLIENT.prenom+' '+CLIENT.nom+' a signé le document "'+signedDoc.nom+'".',
+        'Date de signature : '+sigDate,'Email client : '+CLIENT.email,'','Cordialement,',CLIENT.prenom+' '+CLIENT.nom];
+      window.location.href='mailto:marc.reverseau@caremmafinance.com?subject='+subject+'&body='+encodeURIComponent(bodyTxt.join('\n'));
+    }
+  },400);
 }
 
 // ═══ REPORTING ═══
