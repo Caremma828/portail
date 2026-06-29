@@ -1528,6 +1528,71 @@ function sigInit(){
 }
 function sigClear(){ var c=document.getElementById('sig-pad'); if(c){ c.getContext('2d').clearRect(0,0,c.width,c.height); _sigHasInk=false; } var r=document.getElementById('sig-result'); if(r){ r.style.display='none'; r.innerHTML=''; } }
 function _sigCompact(c){ try{ var tw=340, th=Math.round(c.height*(tw/c.width)); var t=document.createElement('canvas'); t.width=tw; t.height=th; var tx=t.getContext('2d'); tx.fillStyle='#ffffff'; tx.fillRect(0,0,tw,th); tx.drawImage(c,0,0,tw,th); return t.toDataURL('image/jpeg',0.72); }catch(e){ return c.toDataURL('image/png'); } }
+async function _sigBuildFullPDF(sigImg,label){
+  if(!window.jspdf||!window.jspdf.jsPDF) return null;
+  var jsPDFc=window.jspdf.jsPDF; var nom=((CLIENT.prenom||'')+' '+(CLIENT.nom||'')).trim();
+  var wrap=document.createElement('div'); wrap.style.cssText='position:fixed;left:-99999px;top:0;width:760px;';
+  var blocks=[];
+  var src=document.getElementById('parcours-content');
+  if(src){ blocks.push({title:'Objectifs & adequation',root:src}); }
+  var cb=document.createElement('div');
+  try{
+    var dec=decodeURIComponent(Array.from(atob(_CONNAISSANCE_B64)).map(function(ch){return '%'+ch.charCodeAt(0).toString(16).padStart(2,'0');}).join(''));
+    cb.innerHTML=dec; var pd=CLIENT.parcoursData||{};
+    Object.keys(pd).forEach(function(id){ var e=cb.querySelector('[id="'+id+'"]'); if(!e) return; if(e.type==='checkbox'||e.type==='radio'){ e.checked=!!pd[id]; } else { try{e.value=pd[id];}catch(_){ } } });
+    wrap.appendChild(cb); blocks.push({title:'Connaissance & experience',root:cb});
+  }catch(e){}
+  document.body.appendChild(wrap);
+  function extract(root){
+    var items=[];
+    root.querySelectorAll('.q-title, .form-group').forEach(function(node){
+      if(node.classList.contains('q-title')){ items.push({sec:(node.textContent||'').trim()}); return; }
+      var lab=node.querySelector('label'); var question=lab?(lab.textContent||'').trim().replace(/\s+/g,' '):'';
+      var ans=''; var radios=node.querySelectorAll('input[type=radio]'); var checks=node.querySelectorAll('input[type=checkbox]'); var sel=node.querySelector('select'); var txt=node.querySelector('input:not([type=radio]):not([type=checkbox]):not([type=file]),textarea');
+      if(radios.length){ radios.forEach(function(r){ if(r.checked){ var rl=(r.closest&&r.closest('.radio-opt')&&r.closest('.radio-opt').querySelector('label'))||r.nextElementSibling; ans=rl?(rl.textContent||'').trim():(r.value||'Oui'); } }); }
+      else if(checks.length){ var arr=[]; checks.forEach(function(ch){ if(ch.checked){ var cl=(ch.id&&node.querySelector('label[for="'+ch.id+'"]'))||(ch.closest&&ch.closest('.check-opt')&&ch.closest('.check-opt').querySelector('label'))||ch.nextElementSibling; arr.push(cl?(cl.textContent||'').trim():'Oui'); } }); ans=arr.join(', '); }
+      else if(sel){ ans=(sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].text:sel.value)||''; }
+      else if(txt){ ans=txt.value||''; }
+      if(question||ans) items.push({q:question,a:ans});
+    });
+    return items;
+  }
+  var allBlocks=blocks.map(function(b){ return {title:b.title, items:extract(b.root)}; });
+  try{document.body.removeChild(wrap);}catch(_){ }
+  var doc=new jsPDFc({unit:'mm',format:'a4'}); var pw=210, x=16, right=pw-16, y;
+  function header(){ doc.setFillColor(10,22,40); doc.rect(0,0,pw,26,'F'); doc.setTextColor(201,168,76); doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text('Caremma Finance', x, 12); doc.setTextColor(230,236,243); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.text('Gestion privee independante  -  Recapitulatif de dossier client', x, 19); }
+  function footer(){ doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120,120,120); doc.text('SAS Caremma Finance  -  ORIAS 24 007 767  -  RCS Versailles 933 537 433  -  19 Rue du Prieure, Villa Gabriella, 78600 Maisons-Laffitte', x, 290, {maxWidth:right-x}); }
+  function ensure(h){ if(y+h>278){ footer(); doc.addPage(); header(); y=36; } }
+  header(); y=40;
+  doc.setTextColor(10,22,40); doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('Dossier client - Recapitulatif complet', x, y); y+=9;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(40,40,40);
+  doc.text('Client : '+nom, x, y); y+=6; doc.text('Email : '+(CLIENT.email||''), x, y); y+=6; doc.text('Etabli le : '+label, x, y); y+=10;
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(10,22,40); doc.text('Votre conseiller', x, y); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40,40,40);
+  var pres=doc.splitTextToSize('Marc Reverseau, President fondateur. Cabinet de conseil en gestion de patrimoine independant a Maisons-Laffitte : Conseiller en Investissements Financiers (CIF), Intermediaire en operations de banque (IOBSP) et courtier en assurance. ORIAS 24 007 767, RCS Versailles 933 537 433.', right-x);
+  doc.text(pres, x, y); y+=pres.length*5+6;
+  allBlocks.forEach(function(bl){
+    ensure(16); doc.setFillColor(244,245,248); doc.rect(x-2, y-5, right-x+4, 9, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(10,22,40); doc.text(bl.title.toUpperCase(), x, y+1); y+=12;
+    bl.items.forEach(function(it){
+      if(it.sec){ ensure(10); doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(201,168,76); var st=doc.splitTextToSize(it.sec, right-x); doc.text(st, x, y); y+=st.length*5+2; return; }
+      var q=(it.q||'').replace(/\*/g,'').trim(); var a=((it.a==null?'':it.a)+'').trim()||'-';
+      doc.setFont('helvetica','bold'); doc.setFontSize(9.2); var ql=doc.splitTextToSize(q||'-', right-x-2);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9.6); var al=doc.splitTextToSize(a, right-x-6);
+      ensure(ql.length*4.4 + al.length*4.6 + 4);
+      doc.setFont('helvetica','bold'); doc.setFontSize(9.2); doc.setTextColor(70,70,70); doc.text(ql, x, y); y+=ql.length*4.4;
+      doc.setFont('helvetica','normal'); doc.setFontSize(9.6); doc.setTextColor(20,20,20); doc.text(al, x+3, y+0.5); y+=al.length*4.6+3;
+    });
+    y+=3;
+  });
+  ensure(58); y+=4;
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(10,22,40); doc.text('Signature du client', x, y); y+=7;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40,40,40);
+  doc.text('Signe electroniquement par '+nom+' le '+label, x, y); y+=6;
+  doc.setDrawColor(201,168,76); doc.rect(x, y, 84, 34); try{ doc.addImage(sigImg,(sigImg.indexOf('image/png')>=0?'PNG':'JPEG'), x+2, y+2, 80, 30); }catch(e){}
+  y+=40; footer();
+  return doc;
+}
 function _sigBuildPDF(sigDataURL,label){
   if(!window.jspdf||!window.jspdf.jsPDF) return null;
   var doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'}); var W=210,x=18,y;
@@ -1557,7 +1622,9 @@ async function sigSubmit(){
   if(!CLIENT||!CLIENT.email){ if(typeof toast==='function') toast('Session expiree - reconnectez-vous.','error'); return; }
   var now=new Date(); var label=now.toLocaleDateString('fr-FR')+' a '+now.toLocaleTimeString('fr-FR'); var iso=now.toISOString();
   var sigDataURL=_sigCompact(c);
-  var doc=_sigBuildPDF(sigDataURL,label);
+  if(typeof toast==='function') toast('Generation de votre dossier complet...','');
+  var doc=null; try{ doc=await _sigBuildFullPDF(sigDataURL,label); }catch(e){ doc=null; }
+  if(!doc) doc=_sigBuildPDF(sigDataURL,label);
   if(!doc){ if(typeof toast==='function') toast('Module PDF en cours de chargement - reessayez dans un instant.','error'); return; }
   try{ _sigPdfBlob=doc.output('blob'); }catch(e){ _sigPdfBlob=null; }
   _sigPdfName='recapitulatif_signe_'+((CLIENT.nom||'client').toLowerCase().replace(/[^a-z0-9]/g,'_'))+'.pdf';
