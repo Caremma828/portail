@@ -298,7 +298,7 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--navy);col
     <!-- MON DOSSIER / PARCOURS -->
     <div class="pg" id="pg-parcours">
       <div class="ph"><h2>Questionnaire objectifs</h2><p>Vos objectifs patrimoniaux · Situation financière · Fiscalité</p></div>
-      <div id="parcours-content"></div><div class="card" id="sign-card" style="margin-top:18px;border:1px solid var(--cream2,#e4e7ef)"><h3 style="margin:0 0 6px;color:var(--navy,#0A1628);font-size:16px">✍️ Signature de votre dossier</h3><p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;line-height:1.6">Une fois votre questionnaire complété, signez ci-dessous : votre dossier sera <b>transmis automatiquement à votre conseiller</b> et vous pourrez télécharger votre récapitulatif signé (avec date et heure).</p><canvas id="sig-pad" width="600" height="180" style="border:1.5px solid var(--cream2,#cdd3e0);border-radius:8px;background:#fff;cursor:crosshair;display:block;width:100%;max-width:520px;height:180px;touch-action:none"></canvas><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" onclick="sigClear()">Effacer</button><button class="btn btn-primary" onclick="sigSubmit()">✍️ Signer et transmettre à mon conseiller</button></div><div id="sig-result" style="display:none;margin-top:14px"></div></div>
+      <div id="parcours-content"></div><div class="card" id="sign-card-obj" style="margin-top:18px;border:1px solid var(--cream2,#e4e7ef)"><h3 style="margin:0 0 6px;color:var(--navy,#0A1628);font-size:16px">✍️ Signature — Objectifs & adéquation</h3><p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;line-height:1.6">Une fois ce questionnaire complété, signez ci-dessous : <b>l'intégralité de vos réponses + votre signature</b> seront transmises à votre conseiller, et vous pourrez télécharger le PDF.</p><div id="siggate-obj"><p style="font-size:12.5px;color:var(--navy);margin:0 0 8px"><b>🔒 Pour signer</b>, saisissez le <b>code à 6 chiffres</b> reçu par email (votre code d'accès Caremma Finance).</p><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="sigcode-obj" inputmode="numeric" maxlength="6" placeholder="• • • • • •" style="font-size:18px;letter-spacing:4px;text-align:center;width:160px;padding:9px;border:1.5px solid var(--cream2,#cdd3e0);border-radius:8px"><button class="btn btn-primary" onclick="sigCheckCode('obj')">Valider le code</button></div></div><div id="sigarea-obj" style="display:none"><canvas id="sigpad-obj" width="600" height="180" style="border:1.5px solid var(--cream2,#cdd3e0);border-radius:8px;background:#fff;cursor:crosshair;display:block;width:100%;max-width:520px;height:180px;touch-action:none"></canvas><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" onclick="sigClear('obj')">Effacer</button><button class="btn btn-primary" onclick="sigSubmit('obj')">✍️ Signer et transmettre à mon conseiller</button></div></div><div id="sigres-obj" style="display:none;margin-top:14px"></div></div>
     </div>
 
     <!-- DOCUMENTS -->
@@ -373,7 +373,7 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--navy);col
     <!-- QUESTIONNAIRE CONNAISSANCE -->
     <div class="pg" id="pg-connaissance">
       <div class="ph"><h2>Questionnaire connaissance</h2><p>Connaissance & Compétence · Évaluation du risque · Profil AMF</p></div>
-      <div id="connaissance-content"></div>
+      <div id="connaissance-content"></div><div class="card" id="sign-card-conn" style="margin-top:18px;border:1px solid var(--cream2,#e4e7ef)"><h3 style="margin:0 0 6px;color:var(--navy,#0A1628);font-size:16px">✍️ Signature — Connaissance & expérience</h3><p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;line-height:1.6">Une fois ce questionnaire complété, signez ci-dessous : <b>l'intégralité de vos réponses + votre signature</b> seront transmises à votre conseiller, et vous pourrez télécharger le PDF.</p><div id="siggate-conn"><p style="font-size:12.5px;color:var(--navy);margin:0 0 8px"><b>🔒 Pour signer</b>, saisissez le <b>code à 6 chiffres</b> reçu par email (votre code d'accès Caremma Finance).</p><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="sigcode-conn" inputmode="numeric" maxlength="6" placeholder="• • • • • •" style="font-size:18px;letter-spacing:4px;text-align:center;width:160px;padding:9px;border:1.5px solid var(--cream2,#cdd3e0);border-radius:8px"><button class="btn btn-primary" onclick="sigCheckCode('conn')">Valider le code</button></div></div><div id="sigarea-conn" style="display:none"><canvas id="sigpad-conn" width="600" height="180" style="border:1.5px solid var(--cream2,#cdd3e0);border-radius:8px;background:#fff;cursor:crosshair;display:block;width:100%;max-width:520px;height:180px;touch-action:none"></canvas><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" onclick="sigClear('conn')">Effacer</button><button class="btn btn-primary" onclick="sigSubmit('conn')">✍️ Signer et transmettre à mon conseiller</button></div></div><div id="sigres-conn" style="display:none;margin-top:14px"></div></div>
     </div>
 
     <!-- MESSAGERIE -->
@@ -711,21 +711,11 @@ function renderParcours(){
   sv('qo-dob', CLIENT.dob||'');
   sv('qo-nationalite', CLIENT.nationalite||'Française');
 
-  // Restaurer données
-  var pd = CLIENT.parcoursData||{};
-  Object.keys(pd).forEach(function(id){
-    var e=el.querySelector('#'+id); if(!e) return;
-    if(e.type==='checkbox'||e.type==='radio') e.checked=pd[id]; else e.value=pd[id];
-  });
+  // Restaurer données (radios gérés par name)
+  _pcRestore(el);
 
-  // Auto-save
-  el.querySelectorAll('input,select,textarea').forEach(function(inp){
-    inp.addEventListener('change',function(){
-      if(!CLIENT.parcoursData) CLIENT.parcoursData={};
-      if(this.id) CLIENT.parcoursData[this.id]=(this.type==='checkbox'||this.type==='radio')?this.checked:this.value;
-      localStorage.setItem('caremma_c_'+eKey(CLIENT.email),JSON.stringify(CLIENT));
-    });
-  });
+  // Auto-save (radios gérés par name)
+  _pcBindSave(el);
 
   // Radios visuels
   el.querySelectorAll('.radio-opt input[type=radio]').forEach(function(inp){
@@ -740,7 +730,7 @@ function renderParcours(){
 
 function erClearSig(){ var c=document.getElementById('er-sig-canvas'); if(c)c.getContext('2d').clearRect(0,0,c.width,c.height); }
 function calcEpargne(){}
-function generateBlankPDF(){ goPage('parcours'); setTimeout(function(){ var el=document.getElementById('sign-card'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); try{sigInit();}catch(e){} }, 350); }
+function generateBlankPDF(){ goPage('parcours'); setTimeout(function(){ var el=document.getElementById('sign-card-obj'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); try{sigInit();}catch(e){} }, 350); }
 function makeUCRow(data){
   var tr = document.createElement('tr');
   var td1=document.createElement('td'); var i1=document.createElement('input'); i1.placeholder='ISIN'; i1.style.cssText='width:100%;padding:5px;border:1px solid var(--light);border-radius:4px;font-size:12px'; td1.appendChild(i1);
@@ -1149,12 +1139,8 @@ function renderConnaissance(){
   var ed = el.querySelector('#er-date');
   if(ed && !ed.value) ed.value = new Date().toISOString().split('T')[0];
 
-  // Restaurer données
-  var pd = CLIENT.parcoursData||{};
-  Object.keys(pd).forEach(function(id){
-    var e=el.querySelector('#'+id); if(!e) return;
-    if(e.type==='checkbox'||e.type==='radio') e.checked=pd[id]; else e.value=pd[id];
-  });
+  // Restaurer données (radios gérés par name)
+  _pcRestore(el);
 
   // Radios visuels
   el.querySelectorAll('.radio-opt input[type=radio]').forEach(function(inp){
@@ -1166,14 +1152,8 @@ function renderConnaissance(){
     });
   });
 
-  // Auto-save
-  el.querySelectorAll('input,select,textarea').forEach(function(inp){
-    inp.addEventListener('change',function(){
-      if(!CLIENT.parcoursData) CLIENT.parcoursData={};
-      if(this.id) CLIENT.parcoursData[this.id]=(this.type==='checkbox'||this.type==='radio')?this.checked:this.value;
-      localStorage.setItem('caremma_c_'+eKey(CLIENT.email),JSON.stringify(CLIENT));
-    });
-  });
+  // Auto-save (radios gérés par name)
+  _pcBindSave(el);
 }
 
 function goConnaissance(n){
@@ -1356,17 +1336,39 @@ function initFormSelectors(){
   });
 }
 
+function _pcCollect(container){
+  if(!container||!CLIENT) return; if(!CLIENT.parcoursData) CLIENT.parcoursData={}; var pd=CLIENT.parcoursData;
+  container.querySelectorAll('input:not([type=file]),select,textarea').forEach(function(el){
+    if(el.type==='radio'){ if(el.checked&&el.name) pd['radio::'+el.name]=el.value; }
+    else if(el.type==='checkbox'){ if(el.id) pd[el.id]=el.checked; }
+    else if(el.id){ pd[el.id]=el.value; }
+  });
+}
+function _pcRestore(el){
+  if(!el) return; var pd=(CLIENT&&CLIENT.parcoursData)||{};
+  Object.keys(pd).forEach(function(k){
+    if(k.indexOf('radio::')===0){ var nm=k.slice(7),v=pd[k]; var r=el.querySelector('input[type=radio][name=\"'+nm+'\"][value=\"'+v+'\"]'); if(r){ r.checked=true; var ro=r.closest&&r.closest('.radio-opt'); if(ro) ro.classList.add('selected'); } return; }
+    var e=el.querySelector('[id=\"'+k+'\"]'); if(!e) return;
+    if(e.type==='checkbox') e.checked=!!pd[k]; else if(e.type==='radio') e.checked=!!pd[k]; else { try{e.value=pd[k];}catch(_){ } }
+  });
+}
+function _pcBindSave(el){
+  if(!el) return;
+  el.querySelectorAll('input,select,textarea').forEach(function(inp){
+    inp.addEventListener('change',function(){
+      if(!CLIENT.parcoursData) CLIENT.parcoursData={};
+      if(this.type==='radio'){ if(this.checked&&this.name) CLIENT.parcoursData['radio::'+this.name]=this.value; }
+      else if(this.type==='checkbox'){ if(this.id) CLIENT.parcoursData[this.id]=this.checked; }
+      else if(this.id){ CLIENT.parcoursData[this.id]=this.value; }
+      try{ localStorage.setItem('caremma_c_'+eKey(CLIENT.email),JSON.stringify(CLIENT)); }catch(e){}
+    });
+  });
+}
 function autoSaveParcours(){
   if(!CLIENT) return;
-  var data = {};
-  var container = document.getElementById('parcours-content');
-  if(!container) return;
-  container.querySelectorAll('input:not([type=file]),select,textarea').forEach(function(el){
-    if(el.id) data[el.id] = (el.type==='checkbox'||el.type==='radio') ? el.checked : el.value;
-  });
-  if(!CLIENT.parcoursData) CLIENT.parcoursData = {};
-  Object.keys(data).forEach(function(k){ CLIENT.parcoursData[k] = data[k]; });
-  try { localStorage.setItem('caremma_c_'+eKey(CLIENT.email), JSON.stringify(CLIENT)); } catch(e){}
+  _pcCollect(document.getElementById('parcours-content'));
+  _pcCollect(document.getElementById('connaissance-content'));
+  try{ localStorage.setItem('caremma_c_'+eKey(CLIENT.email), JSON.stringify(CLIENT)); }catch(e){}
 }
 
 function saveParcours(){
@@ -1513,40 +1515,55 @@ function renderPublications(){
 }
 </script>
 <script>
-var _sigCtx=null,_sigDrawing=false,_sigHasInk=false,_sigPdfBlob=null,_sigPdfName='recapitulatif_signe.pdf';
-function sigInit(){
-  var c=document.getElementById('sig-pad'); if(!c) return;
-  var ctx=c.getContext('2d'); _sigCtx=ctx;
-  ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#0A1628';
-  if(c._sigBound) return; c._sigBound=true;
-  function pos(e){ var r=c.getBoundingClientRect(); var t=(e.touches&&e.touches[0])||e; return {x:(t.clientX-r.left)*(c.width/r.width), y:(t.clientY-r.top)*(c.height/r.height)}; }
-  function start(e){ e.preventDefault(); _sigDrawing=true; var pt=pos(e); ctx.beginPath(); ctx.moveTo(pt.x,pt.y); }
-  function move(e){ if(!_sigDrawing) return; e.preventDefault(); var pt=pos(e); ctx.lineTo(pt.x,pt.y); ctx.stroke(); _sigHasInk=true; }
-  function end(){ _sigDrawing=false; }
-  c.addEventListener('mousedown',start); c.addEventListener('mousemove',move); window.addEventListener('mouseup',end);
-  c.addEventListener('touchstart',start,{passive:false}); c.addEventListener('touchmove',move,{passive:false}); c.addEventListener('touchend',end);
+var _sigSt={obj:{ink:false,blob:null,name:'',ok:false},conn:{ink:false,blob:null,name:'',ok:false}};
+function _se(w){ return {pad:document.getElementById('sigpad-'+w),code:document.getElementById('sigcode-'+w),gate:document.getElementById('siggate-'+w),area:document.getElementById('sigarea-'+w),res:document.getElementById('sigres-'+w)}; }
+async function sigCheckCode(w){
+  var e=_se(w); if(!e.code) return; var code=(e.code.value||'').trim();
+  if(!/^[0-9]{4,8}$/.test(code)){ if(typeof toast==='function') toast('Saisissez le code reçu par email.','error'); return; }
+  if(!CLIENT||!CLIENT.email){ if(typeof toast==='function') toast('Session expirée — reconnectez-vous.','error'); return; }
+  try{
+    var data=await jbGet(CLIENTS_BIN); var clients=(data&&data.clients)||[];
+    var match=clients.find(function(c){ return (c.email||'').toLowerCase()===CLIENT.email.toLowerCase() && (''+c.code)===(''+code); });
+    if(!match){ if(typeof toast==='function') toast('Code incorrect. Vérifiez l\'email reçu de Caremma Finance.','error'); return; }
+    _sigSt[w].ok=true; if(e.gate) e.gate.style.display='none'; if(e.area) e.area.style.display='block';
+    try{ sigInit(w); }catch(_){}
+    if(typeof toast==='function') toast('Code validé — vous pouvez signer ✓','success');
+  }catch(err){ if(typeof toast==='function') toast('Vérification impossible : '+(err&&err.message||'réseau'),'error'); }
 }
-function sigClear(){ var c=document.getElementById('sig-pad'); if(c){ c.getContext('2d').clearRect(0,0,c.width,c.height); _sigHasInk=false; } var r=document.getElementById('sig-result'); if(r){ r.style.display='none'; r.innerHTML=''; } }
-function _sigCompact(c){ try{ var tw=340, th=Math.round(c.height*(tw/c.width)); var t=document.createElement('canvas'); t.width=tw; t.height=th; var tx=t.getContext('2d'); tx.fillStyle='#ffffff'; tx.fillRect(0,0,tw,th); tx.drawImage(c,0,0,tw,th); return t.toDataURL('image/jpeg',0.72); }catch(e){ return c.toDataURL('image/png'); } }
-async function _sigBuildFullPDF(sigImg,label){
+function sigInit(w){
+  var c=document.getElementById('sigpad-'+w); if(!c||c._b) return; c._b=true;
+  var ctx=c.getContext('2d'); ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#0A1628'; var dr=false;
+  function pos(ev){ var r=c.getBoundingClientRect(); var t=(ev.touches&&ev.touches[0])||ev; return {x:(t.clientX-r.left)*(c.width/r.width),y:(t.clientY-r.top)*(c.height/r.height)}; }
+  function st(ev){ ev.preventDefault(); dr=true; var p=pos(ev); ctx.beginPath(); ctx.moveTo(p.x,p.y); }
+  function mv(ev){ if(!dr) return; ev.preventDefault(); var p=pos(ev); ctx.lineTo(p.x,p.y); ctx.stroke(); _sigSt[w].ink=true; }
+  function en(){ dr=false; }
+  c.addEventListener('mousedown',st); c.addEventListener('mousemove',mv); window.addEventListener('mouseup',en);
+  c.addEventListener('touchstart',st,{passive:false}); c.addEventListener('touchmove',mv,{passive:false}); c.addEventListener('touchend',en);
+}
+function sigClear(w){ var c=document.getElementById('sigpad-'+w); if(c){ c.getContext('2d').clearRect(0,0,c.width,c.height); _sigSt[w].ink=false; } var e=_se(w); if(e.res){ e.res.style.display='none'; e.res.innerHTML=''; } }
+function _sigCompact(c){ try{ var tw=340, th=Math.round(c.height*(tw/c.width)); var t=document.createElement('canvas'); t.width=tw; t.height=th; var x=t.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,tw,th); x.drawImage(c,0,0,tw,th); return t.toDataURL('image/jpeg',0.72); }catch(e){ return c.toDataURL('image/png'); } }
+async function _buildQPDF(w, sigImg, label){
   if(!window.jspdf||!window.jspdf.jsPDF) return null;
   var jsPDFc=window.jspdf.jsPDF; var nom=((CLIENT.prenom||'')+' '+(CLIENT.nom||'')).trim();
-  var wrap=document.createElement('div'); wrap.style.cssText='position:fixed;left:-99999px;top:0;width:760px;';
-  var blocks=[];
-  var src=document.getElementById('parcours-content');
-  if(src){ blocks.push({title:'Objectifs & adequation',root:src}); }
-  var cb=document.createElement('div');
-  try{
-    var dec=decodeURIComponent(Array.from(atob(_CONNAISSANCE_B64)).map(function(ch){return '%'+ch.charCodeAt(0).toString(16).padStart(2,'0');}).join(''));
-    cb.innerHTML=dec; var pd=CLIENT.parcoursData||{};
-    Object.keys(pd).forEach(function(id){ var e=cb.querySelector('[id="'+id+'"]'); if(!e) return; if(e.type==='checkbox'||e.type==='radio'){ e.checked=!!pd[id]; } else { try{e.value=pd[id];}catch(_){ } } });
-    wrap.appendChild(cb); blocks.push({title:'Connaissance & experience',root:cb});
-  }catch(e){}
-  document.body.appendChild(wrap);
+  var blocks=[], tmp=null;
+  if(w==='obj'){ var src=document.getElementById('parcours-content'); if(src) blocks.push({title:'Objectifs & adequation', root:src}); }
+  else { tmp=document.createElement('div'); tmp.style.cssText='position:fixed;left:-99999px;top:0;width:760px;'; try{ var dec=decodeURIComponent(Array.from(atob(_CONNAISSANCE_B64)).map(function(ch){return '%'+ch.charCodeAt(0).toString(16).padStart(2,'0');}).join('')); tmp.innerHTML=dec; document.body.appendChild(tmp); _pcRestore(tmp); blocks.push({title:'Connaissance & experience', root:tmp}); }catch(e){} }
+  function colH(input,ths){ var td=input.closest&&input.closest('td'); if(!td) return ''; return ths[td.cellIndex]||''; }
   function extract(root){
     var items=[];
-    root.querySelectorAll('.q-title, .form-group').forEach(function(node){
-      if(node.classList.contains('q-title')){ items.push({sec:(node.textContent||'').trim()}); return; }
+    root.querySelectorAll('.q-title, .form-group, table').forEach(function(node){
+      if(node.classList&&node.classList.contains('q-title')){ items.push({sec:(node.textContent||'').trim()}); return; }
+      if(node.tagName==='TABLE'){
+        var ths=[].map.call(node.querySelectorAll('thead th'),function(th){return (th.textContent||'').trim();});
+        [].forEach.call(node.querySelectorAll('tbody tr'),function(tr){
+          var tds=tr.querySelectorAll('td'); if(!tds.length) return; var label=(tds[0].textContent||'').trim().replace(/\s+/g,' '); if(!label) return;
+          var parts=[];
+          tr.querySelectorAll('input[type=checkbox]').forEach(function(ch){ if(ch.checked){ parts.push(colH(ch,ths)||'Oui'); } });
+          tr.querySelectorAll('input[type=radio]').forEach(function(r){ if(r.checked){ parts.push(colH(r,ths)||r.value); } });
+          if(parts.length) items.push({q:label,a:parts.join(' - ')});
+        });
+        return;
+      }
       var lab=node.querySelector('label'); var question=lab?(lab.textContent||'').trim().replace(/\s+/g,' '):'';
       var ans=''; var radios=node.querySelectorAll('input[type=radio]'); var checks=node.querySelectorAll('input[type=checkbox]'); var sel=node.querySelector('select'); var txt=node.querySelector('input:not([type=radio]):not([type=checkbox]):not([type=file]),textarea');
       if(radios.length){ radios.forEach(function(r){ if(r.checked){ var rl=(r.closest&&r.closest('.radio-opt')&&r.closest('.radio-opt').querySelector('label'))||r.nextElementSibling; ans=rl?(rl.textContent||'').trim():(r.value||'Oui'); } }); }
@@ -1558,13 +1575,14 @@ async function _sigBuildFullPDF(sigImg,label){
     return items;
   }
   var allBlocks=blocks.map(function(b){ return {title:b.title, items:extract(b.root)}; });
-  try{document.body.removeChild(wrap);}catch(_){ }
+  if(tmp){ try{document.body.removeChild(tmp);}catch(_){ } }
   var doc=new jsPDFc({unit:'mm',format:'a4'}); var pw=210, x=16, right=pw-16, y;
-  function header(){ doc.setFillColor(10,22,40); doc.rect(0,0,pw,26,'F'); doc.setTextColor(201,168,76); doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text('Caremma Finance', x, 12); doc.setTextColor(230,236,243); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.text('Gestion privee independante  -  Recapitulatif de dossier client', x, 19); }
+  function header(){ doc.setFillColor(10,22,40); doc.rect(0,0,pw,26,'F'); doc.setTextColor(201,168,76); doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text('Caremma Finance', x, 12); doc.setTextColor(230,236,243); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.text('Gestion privee independante  -  Dossier client signe', x, 19); }
   function footer(){ doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120,120,120); doc.text('SAS Caremma Finance  -  ORIAS 24 007 767  -  RCS Versailles 933 537 433  -  19 Rue du Prieure, Villa Gabriella, 78600 Maisons-Laffitte', x, 290, {maxWidth:right-x}); }
   function ensure(h){ if(y+h>278){ footer(); doc.addPage(); header(); y=36; } }
   header(); y=40;
-  doc.setTextColor(10,22,40); doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('Dossier client - Recapitulatif complet', x, y); y+=9;
+  doc.setTextColor(10,22,40); doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text((w==='obj'?'Questionnaire Objectifs & adequation':'Questionnaire Connaissance & experience'), x, y); y+=9;
   doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(40,40,40);
   doc.text('Client : '+nom, x, y); y+=6; doc.text('Email : '+(CLIENT.email||''), x, y); y+=6; doc.text('Etabli le : '+label, x, y); y+=10;
   doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(10,22,40); doc.text('Votre conseiller', x, y); y+=6;
@@ -1593,67 +1611,43 @@ async function _sigBuildFullPDF(sigImg,label){
   y+=40; footer();
   return doc;
 }
-function _sigBuildPDF(sigDataURL,label){
-  if(!window.jspdf||!window.jspdf.jsPDF) return null;
-  var doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'}); var W=210,x=18,y;
-  doc.setFillColor(10,22,40); doc.rect(0,0,W,28,'F');
-  doc.setTextColor(201,168,76); doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.text('Caremma Finance', x, 13);
-  doc.setTextColor(255,255,255); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.text('Gestion privee independante  -  Recapitulatif de dossier signe', x, 20);
-  y=44; doc.setTextColor(10,22,40); doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.text('Recapitulatif de votre dossier', x, y); y+=11;
-  doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(40,40,40);
-  doc.text('Client : '+((CLIENT.prenom||'')+' '+(CLIENT.nom||'')).trim(), x, y); y+=7;
-  doc.text('Email : '+(CLIENT.email||''), x, y); y+=7;
-  doc.setFont('helvetica','bold'); doc.text('Date et heure de signature : '+label, x, y); y+=12;
-  doc.setFont('helvetica','normal'); doc.setFontSize(10);
-  var intro="Les differentes etapes de votre parcours (entree en relation, objectifs et situation patrimoniale, connaissance et experience, adequation au sens de la directive MIF II) ont ete completees via votre espace client securise Caremma Finance. En signant ci-dessous, vous confirmez l'exactitude des informations transmises a votre conseiller.";
-  var lines=doc.splitTextToSize(intro, W-2*x); doc.text(lines, x, y); y+=lines.length*5.4+10;
-  doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(10,22,40); doc.text('Signature du client :', x, y); y+=4;
-  doc.setDrawColor(201,168,76); doc.setLineWidth(0.5); doc.rect(x, y, 82, 34);
-  try{ doc.addImage(sigDataURL,(sigDataURL.indexOf('image/png')>=0?'PNG':'JPEG'),x+2,y+2,78,30); }catch(e){}
-  y+=42; doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(90,90,90);
-  doc.text('Signe electroniquement le '+label+'.', x, y);
-  doc.setFont('helvetica','normal'); doc.setFontSize(7.3); doc.setTextColor(120,120,120);
-  doc.text('SAS Caremma Finance  -  19 Rue du Prieure, Villa Gabriella, 78600 Maisons-Laffitte  -  ORIAS 24 007 767  -  RCS Versailles 933 537 433  -  CIF / IOBSP / Courtier en assurance', x, 286, {maxWidth:W-2*x});
-  return doc;
-}
-async function sigSubmit(){
-  var c=document.getElementById('sig-pad');
-  if(!c||!_sigHasInk){ if(typeof toast==='function') toast('Merci de dessiner votre signature.','error'); return; }
-  if(!CLIENT||!CLIENT.email){ if(typeof toast==='function') toast('Session expiree - reconnectez-vous.','error'); return; }
-  var now=new Date(); var label=now.toLocaleDateString('fr-FR')+' a '+now.toLocaleTimeString('fr-FR'); var iso=now.toISOString();
-  var sigDataURL=_sigCompact(c);
-  if(typeof toast==='function') toast('Generation de votre dossier complet...','');
-  var doc=null; try{ doc=await _sigBuildFullPDF(sigDataURL,label); }catch(e){ doc=null; }
-  if(!doc) doc=_sigBuildPDF(sigDataURL,label);
-  if(!doc){ if(typeof toast==='function') toast('Module PDF en cours de chargement - reessayez dans un instant.','error'); return; }
-  try{ _sigPdfBlob=doc.output('blob'); }catch(e){ _sigPdfBlob=null; }
-  _sigPdfName='recapitulatif_signe_'+((CLIENT.nom||'client').toLowerCase().replace(/[^a-z0-9]/g,'_'))+'.pdf';
-  var pdfB64=''; try{ pdfB64=doc.output('datauristring'); }catch(e){}
-  if(typeof toast==='function') toast('Transmission a votre conseiller...','');
-  var r=document.getElementById('sig-result');
+async function sigSubmit(w){
+  var e=_se(w); var c=document.getElementById('sigpad-'+w);
+  if(!_sigSt[w].ok){ if(typeof toast==='function') toast('Validez d\'abord le code reçu par email.','error'); return; }
+  if(!c||!_sigSt[w].ink){ if(typeof toast==='function') toast('Merci de dessiner votre signature.','error'); return; }
+  if(!CLIENT||!CLIENT.email){ if(typeof toast==='function') toast('Session expirée.','error'); return; }
+  if(w==='obj'){ _pcCollect(document.getElementById('parcours-content')); } else { _pcCollect(document.getElementById('connaissance-content')); }
+  var now=new Date(); var label=now.toLocaleDateString('fr-FR')+' à '+now.toLocaleTimeString('fr-FR'); var iso=now.toISOString();
+  var sigImg=_sigCompact(c);
+  if(typeof toast==='function') toast('Génération de votre dossier...','');
+  var doc=null; try{ doc=await _buildQPDF(w,sigImg,label); }catch(err){ doc=null; }
+  if(!doc){ if(typeof toast==='function') toast('Module PDF en cours de chargement — réessayez dans un instant.','error'); return; }
+  try{ _sigSt[w].blob=doc.output('blob'); }catch(_){ _sigSt[w].blob=null; }
+  var titre=(w==='obj'?'Questionnaire Objectifs signé':'Questionnaire Connaissance signé');
+  _sigSt[w].name=(w==='obj'?'objectifs':'connaissance')+'_signe_'+((CLIENT.nom||'client').toLowerCase().replace(/[^a-z0-9]/g,'_'))+'.pdf';
+  var pdfB64=''; try{ pdfB64=doc.output('datauristring'); }catch(_){}
   try{
     var data=await jbGet(MSG_BIN); var k=eKey(CLIENT.email);
     if(!data.messages) data.messages={};
     if(!data.messages[k]) data.messages[k]={prenom:CLIENT.prenom,nom:CLIENT.nom,email:CLIENT.email,msgs:[],docs:[]};
-    var e=data.messages[k];
-    e.parcoursStatus='signed';
-    e.signature={dataURL:sigDataURL, signedAt:iso, label:label};
-    if(!e.docs) e.docs=[];
-    e.docs.unshift({ id:'sig_'+Date.now(), nom:'Recapitulatif signe', name:_sigPdfName, cat:'Signature', fromClient:true, signedAt:label, date:label, status:'ok', size:Math.round(pdfB64.length/1024)+' Ko', data:pdfB64, pdfB64:pdfB64 });
-    if(!e.msgs) e.msgs=[];
-    e.msgs.push({ from:'client', text:'Dossier signe electroniquement le '+label, date:label, ts:Date.now() });
+    var en=data.messages[k];
+    en.parcoursData=CLIENT.parcoursData||en.parcoursData||{};
+    en.identite={nom:CLIENT.nom,prenom:CLIENT.prenom,email:CLIENT.email,tel:CLIENT.tel||''};
+    if(w==='obj') en.parcoursStatus='signed';
+    en['sign_'+w]={label:label,signedAt:iso};
+    if(!en.docs) en.docs=[];
+    en.docs.unshift({ id:'sig_'+w+'_'+Date.now(), nom:titre, name:_sigSt[w].name, cat:'Signature', fromClient:true, signedAt:label, date:label, status:'ok', size:Math.round(pdfB64.length/1024)+' Ko', data:pdfB64 });
+    if(!en.msgs) en.msgs=[];
+    en.msgs.push({ from:'client', text:titre+' le '+label, date:label, ts:Date.now() });
     await jbPut(MSG_BIN, data);
-    if(CLIENT.parcoursData){ CLIENT.parcoursData.signed=true; } else { CLIENT.parcoursData={signed:true}; }
-    if(typeof autoSaveParcours==='function') autoSaveParcours();
-    if(r){ r.style.display='block'; r.innerHTML='<div style="background:#e6f9ef;border:1px solid #27ae60;color:#1a7a3a;padding:12px 14px;border-radius:8px;font-size:13px"><b>\u2705 Dossier signe et transmis a votre conseiller</b><br>Le '+label+'.</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" onclick="sigDownload()">\ud83d\udcc4 Telecharger mon recapitulatif signe</button><button class="btn btn-ghost" onclick="sigEmail()">\u2709\ufe0f Envoyer aussi par email</button></div>'; }
-    if(typeof toast==='function') toast('Dossier signe et transmis \u2713','success');
-    if(typeof renderAccueil==='function'){ try{ renderAccueil(); }catch(_){} }
+    if(e.res){ e.res.style.display='block'; e.res.innerHTML='<div style="background:#e6f9ef;border:1px solid #27ae60;color:#1a7a3a;padding:12px 14px;border-radius:8px;font-size:13px"><b>\u2705 '+titre+' et transmis à votre conseiller</b><br>Le '+label+'.</div><div style="margin-top:10px"><button class="btn btn-primary" onclick="sigDownload(\''+w+'\')">\ud83d\udcc4 Télécharger le PDF signé</button></div>'; }
+    if(typeof toast==='function') toast('Signé et transmis ✓','success');
+    if(typeof renderAccueil==='function'){ try{renderAccueil();}catch(_){} }
   }catch(err){
-    if(r){ r.style.display='block'; r.innerHTML='<div style="background:#fff4e5;border:1px solid #e0a000;color:#7a5200;padding:12px 14px;border-radius:8px;font-size:13px">\u26a0\ufe0f Signature enregistree, mais l\'envoi automatique a echoue ('+(err&&err.message||'reseau')+'). Vous pouvez telecharger votre dossier et l\'envoyer par email.</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" onclick="sigDownload()">\ud83d\udcc4 Telecharger</button><button class="btn btn-ghost" onclick="sigEmail()">\u2709\ufe0f Envoyer par email</button></div>'; }
+    if(e.res){ e.res.style.display='block'; e.res.innerHTML='<div style="background:#fff4e5;border:1px solid #e0a000;color:#7a5200;padding:12px;border-radius:8px;font-size:13px">\u26a0\ufe0f Signature enregistrée mais l\'envoi automatique a échoué ('+(err&&err.message||'réseau')+'). Vous pouvez télécharger votre PDF.</div><div style="margin-top:10px"><button class="btn btn-primary" onclick="sigDownload(\''+w+'\')">\ud83d\udcc4 Télécharger</button></div>'; }
   }
 }
-function sigDownload(){ if(!_sigPdfBlob){ if(typeof toast==='function') toast('Aucun PDF a telecharger.','error'); return; } var u=URL.createObjectURL(_sigPdfBlob); var a=document.createElement('a'); a.href=u; a.download=_sigPdfName; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(u);},1500); }
-function sigEmail(){ var nom=((CLIENT.prenom||'')+' '+(CLIENT.nom||'')).trim(); var subj=encodeURIComponent('Mon dossier signe - '+nom); var body=encodeURIComponent('Bonjour,\n\nJe vous transmets mon dossier signe via mon espace client Caremma Finance.\n\n(Pensez a joindre le PDF telecharge depuis le portail.)\n\nCordialement,\n'+nom); window.location.href='mailto:contact@caremma-finance.com?subject='+subj+'&body='+body; }
+function sigDownload(w){ var bl=_sigSt[w].blob; if(!bl){ if(typeof toast==='function') toast('Aucun PDF à télécharger.','error'); return; } var u=URL.createObjectURL(bl); var a=document.createElement('a'); a.href=u; a.download=_sigSt[w].name||'document.pdf'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(u);},1500); }
 </script>
 </body>
 </html>
