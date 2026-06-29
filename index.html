@@ -214,6 +214,7 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--navy);col
 .pdf-print-only{display:none}
 
 .rep-card{margin-bottom:12px}.rep-head{display:flex;align-items:center;gap:14px}.rep-ic{width:42px;height:42px;border-radius:10px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex:none}.rep-name{font-size:13px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rep-meta{font-size:11px;color:var(--muted);margin-top:2px}.rep-actions{display:flex;gap:8px;flex-wrap:wrap}@media(max-width:560px){.rep-head{flex-wrap:wrap}.rep-actions{width:100%}}.guide-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:13px}.guide-item{background:var(--cream);border:1px solid var(--cream2);border-radius:12px;padding:14px;cursor:pointer;transition:.16s;display:flex;flex-direction:column;gap:3px}.guide-item:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 6px 18px rgba(10,22,40,.08)}.guide-item .gi-ico{font-size:22px}.guide-item b{color:var(--navy);font-size:14px}.guide-item .gi-d{color:var(--muted);font-size:12.5px;line-height:1.5}.welcome-card{border-left:4px solid var(--gold)}.doc-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:18px;border-bottom:1px solid var(--cream2)}.doc-tab{background:none;border:none;border-bottom:2px solid transparent;padding:9px 14px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;margin-bottom:-1px}.doc-tab:hover{color:var(--navy)}.doc-tab.on{color:var(--navy);border-bottom-color:var(--gold)}.doc-pane{display:none}.doc-pane.on{display:block}</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -297,7 +298,7 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--navy);col
     <!-- MON DOSSIER / PARCOURS -->
     <div class="pg" id="pg-parcours">
       <div class="ph"><h2>Questionnaire objectifs</h2><p>Vos objectifs patrimoniaux · Situation financière · Fiscalité</p></div>
-      <div id="parcours-content"></div>
+      <div id="parcours-content"></div><div class="card" id="sign-card" style="margin-top:18px;border:1px solid var(--cream2,#e4e7ef)"><h3 style="margin:0 0 6px;color:var(--navy,#0A1628);font-size:16px">✍️ Signature de votre dossier</h3><p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;line-height:1.6">Une fois votre questionnaire complété, signez ci-dessous : votre dossier sera <b>transmis automatiquement à votre conseiller</b> et vous pourrez télécharger votre récapitulatif signé (avec date et heure).</p><canvas id="sig-pad" width="600" height="180" style="border:1.5px solid var(--cream2,#cdd3e0);border-radius:8px;background:#fff;cursor:crosshair;display:block;width:100%;max-width:520px;height:180px;touch-action:none"></canvas><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" onclick="sigClear()">Effacer</button><button class="btn btn-primary" onclick="sigSubmit()">✍️ Signer et transmettre à mon conseiller</button></div><div id="sig-result" style="display:none;margin-top:14px"></div></div>
     </div>
 
     <!-- DOCUMENTS -->
@@ -587,7 +588,7 @@ function goPage(pg, btn){ if(pg==='reportings'){ _pendingDocTab='reportings'; pg
   else{ var nb=document.getElementById('nav-'+pg); if(nb) nb.classList.add('on'); }
   document.getElementById('main-content').scrollTop = 0;
   if(pg==='accueil')   renderAccueil();
-  if(pg==='parcours')  renderParcours();
+  if(pg==='parcours'){  renderParcours(); try{sigInit();}catch(e){} }
   if(pg==='documents') renderDocsHub();
   if(pg==='reporting') loadReporting(); 
   if(pg==='messagerie'){ loadMsgs(); }
@@ -739,7 +740,7 @@ function renderParcours(){
 
 function erClearSig(){ var c=document.getElementById('er-sig-canvas'); if(c)c.getContext('2d').clearRect(0,0,c.width,c.height); }
 function calcEpargne(){}
-function generateBlankPDF(){ openDocuSignModal(); }
+function generateBlankPDF(){ goPage('parcours'); setTimeout(function(){ var el=document.getElementById('sign-card'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); try{sigInit();}catch(e){} }, 350); }
 function makeUCRow(data){
   var tr = document.createElement('tr');
   var td1=document.createElement('td'); var i1=document.createElement('input'); i1.placeholder='ISIN'; i1.style.cssText='width:100%;padding:5px;border:1px solid var(--light);border-radius:4px;font-size:12px'; td1.appendChild(i1);
@@ -1510,6 +1511,82 @@ function renderPublications(){
     }).join("");
   }).catch(function(e){ el.innerHTML='<div class="card" style="text-align:center;padding:24px;color:var(--muted)"><div style="font-size:12px">Impossible de charger les publications pour le moment.</div></div>'; });
 }
+</script>
+<script>
+var _sigCtx=null,_sigDrawing=false,_sigHasInk=false,_sigPdfBlob=null,_sigPdfName='recapitulatif_signe.pdf';
+function sigInit(){
+  var c=document.getElementById('sig-pad'); if(!c) return;
+  var ctx=c.getContext('2d'); _sigCtx=ctx;
+  ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#0A1628';
+  if(c._sigBound) return; c._sigBound=true;
+  function pos(e){ var r=c.getBoundingClientRect(); var t=(e.touches&&e.touches[0])||e; return {x:(t.clientX-r.left)*(c.width/r.width), y:(t.clientY-r.top)*(c.height/r.height)}; }
+  function start(e){ e.preventDefault(); _sigDrawing=true; var pt=pos(e); ctx.beginPath(); ctx.moveTo(pt.x,pt.y); }
+  function move(e){ if(!_sigDrawing) return; e.preventDefault(); var pt=pos(e); ctx.lineTo(pt.x,pt.y); ctx.stroke(); _sigHasInk=true; }
+  function end(){ _sigDrawing=false; }
+  c.addEventListener('mousedown',start); c.addEventListener('mousemove',move); window.addEventListener('mouseup',end);
+  c.addEventListener('touchstart',start,{passive:false}); c.addEventListener('touchmove',move,{passive:false}); c.addEventListener('touchend',end);
+}
+function sigClear(){ var c=document.getElementById('sig-pad'); if(c){ c.getContext('2d').clearRect(0,0,c.width,c.height); _sigHasInk=false; } var r=document.getElementById('sig-result'); if(r){ r.style.display='none'; r.innerHTML=''; } }
+function _sigCompact(c){ try{ var tw=340, th=Math.round(c.height*(tw/c.width)); var t=document.createElement('canvas'); t.width=tw; t.height=th; var tx=t.getContext('2d'); tx.fillStyle='#ffffff'; tx.fillRect(0,0,tw,th); tx.drawImage(c,0,0,tw,th); return t.toDataURL('image/jpeg',0.72); }catch(e){ return c.toDataURL('image/png'); } }
+function _sigBuildPDF(sigDataURL,label){
+  if(!window.jspdf||!window.jspdf.jsPDF) return null;
+  var doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'}); var W=210,x=18,y;
+  doc.setFillColor(10,22,40); doc.rect(0,0,W,28,'F');
+  doc.setTextColor(201,168,76); doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.text('Caremma Finance', x, 13);
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.text('Gestion privee independante  -  Recapitulatif de dossier signe', x, 20);
+  y=44; doc.setTextColor(10,22,40); doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.text('Recapitulatif de votre dossier', x, y); y+=11;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(40,40,40);
+  doc.text('Client : '+((CLIENT.prenom||'')+' '+(CLIENT.nom||'')).trim(), x, y); y+=7;
+  doc.text('Email : '+(CLIENT.email||''), x, y); y+=7;
+  doc.setFont('helvetica','bold'); doc.text('Date et heure de signature : '+label, x, y); y+=12;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  var intro="Les differentes etapes de votre parcours (entree en relation, objectifs et situation patrimoniale, connaissance et experience, adequation au sens de la directive MIF II) ont ete completees via votre espace client securise Caremma Finance. En signant ci-dessous, vous confirmez l'exactitude des informations transmises a votre conseiller.";
+  var lines=doc.splitTextToSize(intro, W-2*x); doc.text(lines, x, y); y+=lines.length*5.4+10;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(10,22,40); doc.text('Signature du client :', x, y); y+=4;
+  doc.setDrawColor(201,168,76); doc.setLineWidth(0.5); doc.rect(x, y, 82, 34);
+  try{ doc.addImage(sigDataURL,(sigDataURL.indexOf('image/png')>=0?'PNG':'JPEG'),x+2,y+2,78,30); }catch(e){}
+  y+=42; doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(90,90,90);
+  doc.text('Signe electroniquement le '+label+'.', x, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.3); doc.setTextColor(120,120,120);
+  doc.text('SAS Caremma Finance  -  19 Rue du Prieure, Villa Gabriella, 78600 Maisons-Laffitte  -  ORIAS 24 007 767  -  RCS Versailles 933 537 433  -  CIF / IOBSP / Courtier en assurance', x, 286, {maxWidth:W-2*x});
+  return doc;
+}
+async function sigSubmit(){
+  var c=document.getElementById('sig-pad');
+  if(!c||!_sigHasInk){ if(typeof toast==='function') toast('Merci de dessiner votre signature.','error'); return; }
+  if(!CLIENT||!CLIENT.email){ if(typeof toast==='function') toast('Session expiree - reconnectez-vous.','error'); return; }
+  var now=new Date(); var label=now.toLocaleDateString('fr-FR')+' a '+now.toLocaleTimeString('fr-FR'); var iso=now.toISOString();
+  var sigDataURL=_sigCompact(c);
+  var doc=_sigBuildPDF(sigDataURL,label);
+  if(!doc){ if(typeof toast==='function') toast('Module PDF en cours de chargement - reessayez dans un instant.','error'); return; }
+  try{ _sigPdfBlob=doc.output('blob'); }catch(e){ _sigPdfBlob=null; }
+  _sigPdfName='recapitulatif_signe_'+((CLIENT.nom||'client').toLowerCase().replace(/[^a-z0-9]/g,'_'))+'.pdf';
+  var pdfB64=''; try{ pdfB64=doc.output('datauristring'); }catch(e){}
+  if(typeof toast==='function') toast('Transmission a votre conseiller...','');
+  var r=document.getElementById('sig-result');
+  try{
+    var data=await jbGet(MSG_BIN); var k=eKey(CLIENT.email);
+    if(!data.messages) data.messages={};
+    if(!data.messages[k]) data.messages[k]={prenom:CLIENT.prenom,nom:CLIENT.nom,email:CLIENT.email,msgs:[],docs:[]};
+    var e=data.messages[k];
+    e.parcoursStatus='signed';
+    e.signature={dataURL:sigDataURL, signedAt:iso, label:label};
+    if(!e.docs) e.docs=[];
+    e.docs.unshift({ id:'sig_'+Date.now(), nom:'Recapitulatif signe', name:_sigPdfName, cat:'Signature', fromClient:true, signedAt:label, date:label, status:'ok', size:Math.round(pdfB64.length/1024)+' Ko', data:pdfB64, pdfB64:pdfB64 });
+    if(!e.msgs) e.msgs=[];
+    e.msgs.push({ from:'client', text:'Dossier signe electroniquement le '+label, date:label, ts:Date.now() });
+    await jbPut(MSG_BIN, data);
+    if(CLIENT.parcoursData){ CLIENT.parcoursData.signed=true; } else { CLIENT.parcoursData={signed:true}; }
+    if(typeof autoSaveParcours==='function') autoSaveParcours();
+    if(r){ r.style.display='block'; r.innerHTML='<div style="background:#e6f9ef;border:1px solid #27ae60;color:#1a7a3a;padding:12px 14px;border-radius:8px;font-size:13px"><b>\u2705 Dossier signe et transmis a votre conseiller</b><br>Le '+label+'.</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" onclick="sigDownload()">\ud83d\udcc4 Telecharger mon recapitulatif signe</button><button class="btn btn-ghost" onclick="sigEmail()">\u2709\ufe0f Envoyer aussi par email</button></div>'; }
+    if(typeof toast==='function') toast('Dossier signe et transmis \u2713','success');
+    if(typeof renderAccueil==='function'){ try{ renderAccueil(); }catch(_){} }
+  }catch(err){
+    if(r){ r.style.display='block'; r.innerHTML='<div style="background:#fff4e5;border:1px solid #e0a000;color:#7a5200;padding:12px 14px;border-radius:8px;font-size:13px">\u26a0\ufe0f Signature enregistree, mais l\'envoi automatique a echoue ('+(err&&err.message||'reseau')+'). Vous pouvez telecharger votre dossier et l\'envoyer par email.</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" onclick="sigDownload()">\ud83d\udcc4 Telecharger</button><button class="btn btn-ghost" onclick="sigEmail()">\u2709\ufe0f Envoyer par email</button></div>'; }
+  }
+}
+function sigDownload(){ if(!_sigPdfBlob){ if(typeof toast==='function') toast('Aucun PDF a telecharger.','error'); return; } var u=URL.createObjectURL(_sigPdfBlob); var a=document.createElement('a'); a.href=u; a.download=_sigPdfName; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(u);},1500); }
+function sigEmail(){ var nom=((CLIENT.prenom||'')+' '+(CLIENT.nom||'')).trim(); var subj=encodeURIComponent('Mon dossier signe - '+nom); var body=encodeURIComponent('Bonjour,\n\nJe vous transmets mon dossier signe via mon espace client Caremma Finance.\n\n(Pensez a joindre le PDF telecharge depuis le portail.)\n\nCordialement,\n'+nom); window.location.href='mailto:contact@caremma-finance.com?subject='+subj+'&body='+body; }
 </script>
 </body>
 </html>
