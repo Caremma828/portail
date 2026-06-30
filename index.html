@@ -288,10 +288,10 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--navy);col
   </div>
   <div class="nav-bar">
     <button class="nav-btn on" id="nav-accueil" onclick="goPage('accueil',this)">🏠 Accueil</button>
+    <button class="nav-btn" id="nav-reporting" onclick="goPage('reporting',this)">📊 Portefeuille</button>
     <button class="nav-btn" id="nav-parcours" onclick="goPage('parcours',this)">📋 Questionnaire objectifs</button>
     <button class="nav-btn" id="nav-connaissance" onclick="goPage('connaissance',this)">📊 Questionnaire connaissance</button>
     <button class="nav-btn" id="nav-documents" onclick="goPage('documents',this)">📎 Documents</button>
-    <button class="nav-btn" id="nav-reporting" onclick="goPage('reporting',this)">📊 Portefeuille</button>
     <button class="nav-btn" id="nav-messagerie" onclick="goPage('messagerie',this)">💬 Messagerie <span class="nav-badge" id="nav-badge-msg" style="display:none">!</span></button>
   </div>
   <div class="content" id="main-content">
@@ -306,11 +306,11 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--navy);col
     <!-- MON DOSSIER / PARCOURS -->
     <div class="pg" id="pg-parcours">
       <div class="ph"><h2>Questionnaire objectifs</h2><p>Vos objectifs patrimoniaux · Situation financière · Fiscalité</p></div>
-      <div id="parcours-content"></div><div class="card" id="sign-card" style="margin-top:18px;border:1px solid var(--cream2,#e4e7ef)"><h3 style="margin:0 0 6px;color:var(--navy,#0A1628);font-size:16px">✍️ Signature de votre dossier</h3><p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;line-height:1.6">Signez <b>une seule fois</b> : votre signature sera apposée sur vos <b>deux documents</b> (Questionnaire Objectifs et Connaissance &amp; compétence), transmis automatiquement à votre conseiller. Vous pourrez les télécharger en PDF.</p><div id="siggate"><p style="font-size:12.5px;color:var(--navy);margin:0 0 8px"><b>🔒 Pour signer</b>, saisissez le <b>code à 6 chiffres</b> reçu par email (votre code d'accès Caremma Finance).</p><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="sigcode" inputmode="numeric" maxlength="6" placeholder="• • • • • •" style="font-size:18px;letter-spacing:4px;text-align:center;width:160px;padding:9px;border:1.5px solid var(--cream2,#cdd3e0);border-radius:8px"><button class="btn btn-primary" onclick="sigCheckCode()">Valider le code</button></div></div><div id="sigarea" style="display:none"><canvas id="sigpad" width="600" height="180" style="border:1.5px solid var(--cream2,#cdd3e0);border-radius:8px;background:#fff;cursor:crosshair;display:block;width:100%;max-width:520px;height:180px;touch-action:none"></canvas><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" onclick="sigClear()">Effacer</button><button class="btn btn-primary" onclick="sigSubmit()">✍️ Signer et transmettre à mon conseiller</button></div></div><div id="sigres" style="display:none;margin-top:14px"></div></div>
+      <div id="parcours-content"></div><div class="card" id="sign-card" style="margin-top:18px;border:1px solid var(--cream2,#e4e7ef)"><h3 style="margin:0 0 6px;color:var(--navy,#0A1628);font-size:16px">✍️ Signature de votre dossier</h3><p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;line-height:1.6">Signez <b>une seule fois</b> : votre signature sera apposée sur vos <b>deux documents</b> (Questionnaire Objectifs et Connaissance &amp; compétence), transmis automatiquement à votre conseiller. Vous pourrez les télécharger en PDF.</p><p style="font-size:12.5px;color:var(--navy);margin:0 0 10px"><b>✍️ Signez ci-dessous</b> pour finaliser et transmettre votre dossier.</p><div id="siggate" style="display:none"><p style="font-size:12.5px;color:var(--navy);margin:0 0 8px"><b>🔒 Pour signer</b>, saisissez le <b>code à 6 chiffres</b> reçu par email (votre code d'accès Caremma Finance).</p><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="sigcode" inputmode="numeric" maxlength="6" placeholder="• • • • • •" style="font-size:18px;letter-spacing:4px;text-align:center;width:160px;padding:9px;border:1.5px solid var(--cream2,#cdd3e0);border-radius:8px"><button class="btn btn-primary" onclick="sigCheckCode()">Valider le code</button></div></div><div id="sigarea"><canvas id="sigpad" width="600" height="180" style="border:1.5px solid var(--cream2,#cdd3e0);border-radius:8px;background:#fff;cursor:crosshair;display:block;width:100%;max-width:520px;height:180px;touch-action:none"></canvas><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" onclick="sigClear()">Effacer</button><button class="btn btn-primary" onclick="sigSubmit()">✍️ Signer et transmettre à mon conseiller</button></div></div><div id="sigres" style="display:none;margin-top:14px"></div></div>
     </div>
 
     <!-- DOCUMENTS -->
-    <div class="pg" id="pg-documents"><div class="ph"><h2>Mes documents</h2><p>Vos reportings et vos pièces justificatives, classés par rubrique.</p></div><div class="doc-tabs"><button class="doc-tab on" data-r="reportings" onclick="docTab('reportings',this)">📈 Reportings</button><button class="doc-tab" data-r="admin" onclick="docTab('admin',this)">📋 Documents administratifs</button><button class="doc-tab" data-r="autres" onclick="docTab('autres',this)">📁 Autres</button><button class="doc-tab" data-r="publications" onclick="docTab('publications',this)">📰 Publications</button></div><div class="doc-pane on" id="docpane-reportings"><div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-ghost btn-sm" onclick="renderReportings()">↻ Actualiser</button></div><div id="reportings-list"></div></div><div class="doc-pane" id="docpane-admin"><div id="docs-admin-list" style="margin-bottom:16px"></div><div class="card"><div class="section-title">Déposer un document</div><div class="upload-zone" id="drop-zone-doc-admin" ondragover="event.preventDefault();this.classList.add('dragging')" ondragleave="this.classList.remove('dragging')" ondrop="event.preventDefault();this.classList.remove('dragging');handleUpload(event.dataTransfer.files[0],'doc-admin')" onclick="document.getElementById('fi-doc-admin').click()"><div style="font-size:28px;margin-bottom:8px">📎</div><div style="font-size:13px;font-weight:600;color:var(--navy)">Glisser un fichier ou cliquer</div><div style="font-size:11px;color:var(--muted);margin-top:3px">PDF · JPG · PNG · Max 5 Mo</div></div><input type="file" id="fi-doc-admin" style="display:none" accept=".pdf,.jpg,.jpeg,.png" onchange="handleUpload(this.files[0],'doc-admin');this.value=''"><div class="upload-progress" id="up-prog-doc-admin"><div class="upload-bar-wrap"><div class="upload-bar" id="up-bar-doc-admin"></div></div><div style="font-size:11px;color:var(--muted);text-align:center" id="up-status-doc-admin"></div></div></div></div><div class="doc-pane" id="docpane-publications"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:12.5px;color:var(--muted)">Les notes et analyses transmises par votre conseiller.</div><button class="btn btn-ghost btn-sm" onclick="renderPublications()">↻ Actualiser</button></div><div id="publications-list"></div></div><div class="doc-pane" id="docpane-autres"><div id="docs-autres-list" style="margin-bottom:16px"></div><div class="card"><div class="section-title">Déposer un document</div><div class="upload-zone" id="drop-zone-doc-autres" ondragover="event.preventDefault();this.classList.add('dragging')" ondragleave="this.classList.remove('dragging')" ondrop="event.preventDefault();this.classList.remove('dragging');handleUpload(event.dataTransfer.files[0],'doc-autres')" onclick="document.getElementById('fi-doc-autres').click()"><div style="font-size:28px;margin-bottom:8px">📎</div><div style="font-size:13px;font-weight:600;color:var(--navy)">Glisser un fichier ou cliquer</div><div style="font-size:11px;color:var(--muted);margin-top:3px">PDF · JPG · PNG · Max 5 Mo</div></div><input type="file" id="fi-doc-autres" style="display:none" accept=".pdf,.jpg,.jpeg,.png" onchange="handleUpload(this.files[0],'doc-autres');this.value=''"><div class="upload-progress" id="up-prog-doc-autres"><div class="upload-bar-wrap"><div class="upload-bar" id="up-bar-doc-autres"></div></div><div style="font-size:11px;color:var(--muted);text-align:center" id="up-status-doc-autres"></div></div></div></div></div>
+    <div class="pg" id="pg-documents"><div class="ph"><h2>Mes documents</h2><p>Vos reportings et vos pièces justificatives, classés par rubrique.</p></div><div class="card" style="border:1px solid var(--cream2,#e4e7ef);margin-bottom:16px"><div class="section-title">📎 Déposer un document</div><p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;line-height:1.6">Relevés bancaires, justificatifs, ou tout document à transmettre à votre conseiller — reçu immédiatement par Caremma Finance.</p><div class="upload-zone" id="drop-zone-doc-admin" ondragover="event.preventDefault();this.classList.add('dragging')" ondragleave="this.classList.remove('dragging')" ondrop="event.preventDefault();this.classList.remove('dragging');handleUpload(event.dataTransfer.files[0],'doc-admin')" onclick="document.getElementById('fi-doc-admin').click()"><div style="font-size:28px;margin-bottom:8px">📎</div><div style="font-size:13px;font-weight:600;color:var(--navy)">Glisser un fichier ou cliquer</div><div style="font-size:11px;color:var(--muted);margin-top:3px">PDF · JPG · PNG · Max 5 Mo</div></div><input type="file" id="fi-doc-admin" style="display:none" accept=".pdf,.jpg,.jpeg,.png" onchange="handleUpload(this.files[0],'doc-admin');this.value=''"><div class="upload-progress" id="up-prog-doc-admin"><div class="upload-bar-wrap"><div class="upload-bar" id="up-bar-doc-admin"></div></div><div style="font-size:11px;color:var(--muted);text-align:center" id="up-status-doc-admin"></div></div></div><div class="doc-tabs"><button class="doc-tab on" data-r="reportings" onclick="docTab('reportings',this)">📈 Reportings</button><button class="doc-tab" data-r="admin" onclick="docTab('admin',this)">📋 Documents administratifs</button><button class="doc-tab" data-r="autres" onclick="docTab('autres',this)">📁 Autres</button><button class="doc-tab" data-r="publications" onclick="docTab('publications',this)">📰 Publications</button></div><div class="doc-pane on" id="docpane-reportings"><div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-ghost btn-sm" onclick="renderReportings()">↻ Actualiser</button></div><div id="reportings-list"></div></div><div class="doc-pane" id="docpane-admin"><div id="docs-admin-list" style="margin-bottom:16px"></div></div><div class="doc-pane" id="docpane-publications"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:12.5px;color:var(--muted)">Les notes et analyses transmises par votre conseiller.</div><button class="btn btn-ghost btn-sm" onclick="renderPublications()">↻ Actualiser</button></div><div id="publications-list"></div></div><div class="doc-pane" id="docpane-autres"><div id="docs-autres-list" style="margin-bottom:16px"></div><div class="card"><div class="section-title">Déposer un document</div><div class="upload-zone" id="drop-zone-doc-autres" ondragover="event.preventDefault();this.classList.add('dragging')" ondragleave="this.classList.remove('dragging')" ondrop="event.preventDefault();this.classList.remove('dragging');handleUpload(event.dataTransfer.files[0],'doc-autres')" onclick="document.getElementById('fi-doc-autres').click()"><div style="font-size:28px;margin-bottom:8px">📎</div><div style="font-size:13px;font-weight:600;color:var(--navy)">Glisser un fichier ou cliquer</div><div style="font-size:11px;color:var(--muted);margin-top:3px">PDF · JPG · PNG · Max 5 Mo</div></div><input type="file" id="fi-doc-autres" style="display:none" accept=".pdf,.jpg,.jpeg,.png" onchange="handleUpload(this.files[0],'doc-autres');this.value=''"><div class="upload-progress" id="up-prog-doc-autres"><div class="upload-bar-wrap"><div class="upload-bar" id="up-bar-doc-autres"></div></div><div style="font-size:11px;color:var(--muted);text-align:center" id="up-status-doc-autres"></div></div></div></div></div>
 
     <!-- PORTEFEUILLE & REPORTINGS -->
     <div class="pg" id="pg-reporting">
@@ -356,25 +356,7 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--navy);col
         <div class="section-title">Documents signés</div>
         <div id="signed-list"></div>
       </div>
-      <!-- Upload depuis portail -->
-      <div class="card">
-        <div class="section-title">Déposer un document</div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Relevés bancaires, justificatifs, ou tout document pour votre conseiller.</p>
-        <div class="upload-zone" id="drop-zone-rep"
-          ondragover="event.preventDefault();this.classList.add('dragging')"
-          ondragleave="this.classList.remove('dragging')"
-          ondrop="event.preventDefault();this.classList.remove('dragging');handleUpload(event.dataTransfer.files[0],'rep')"
-          onclick="document.getElementById('fi-rep').click()">
-          <div style="font-size:28px;margin-bottom:6px">📎</div>
-          <div style="font-size:13px;font-weight:600;color:var(--navy)">Glisser ou cliquer</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:3px">PDF · JPG · PNG</div>
-        </div>
-        <input type="file" id="fi-rep" style="display:none" accept=".pdf,.jpg,.jpeg,.png" onchange="handleUpload(this.files[0],'rep');this.value=''">
-        <div class="upload-progress" id="up-prog-rep">
-          <div class="upload-bar-wrap"><div class="upload-bar" id="up-bar-rep"></div></div>
-          <div style="font-size:11px;color:var(--muted);text-align:center" id="up-status-rep"></div>
-        </div>
-      </div>
+      
     </div>
 
 
@@ -1032,6 +1014,16 @@ function renderChart(history){
   var ctx = canvas.getContext('2d');
   var labels = history.map(function(h){ return h.date; });
   var values = history.map(function(h){ return h.valeur; });
+  var _vmin=Math.min.apply(null,values), _vmax=Math.max.apply(null,values), _range=_vmax-_vmin;
+  var _pad = _range>0 ? _range*0.12 : (Math.abs(_vmax)*0.02 || 1);
+  var _yMin=_vmin-_pad; if(_yMin<0 && _vmin>=0) _yMin=0;
+  var _yMax=_vmax+_pad;
+  var _kdec = (_range>0 && _range<20000) ? 1 : 0;
+  function _fmtEUR(v){ var a=Math.abs(v);
+    if(a>=1000000) return (v/1000000).toLocaleString('fr-FR',{maximumFractionDigits:2})+' M\u20ac';
+    if(a>=1000) return (v/1000).toLocaleString('fr-FR',{minimumFractionDigits:_kdec,maximumFractionDigits:_kdec})+' K\u20ac';
+    return Math.round(v).toLocaleString('fr-FR')+' \u20ac';
+  }
   var isPos  = values[values.length-1] >= values[0];
   var col    = isPos ? '#27ae60' : '#c0392b';
   _ptfChart  = new Chart(ctx, {
@@ -1048,8 +1040,8 @@ function renderChart(history){
         return c.parsed.y.toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0});
       }}}},
       scales:{
-        y:{ticks:{callback:function(v){return (v/1000).toFixed(0)+'K€';},font:{size:11}},grid:{color:'rgba(0,0,0,.05)'}},
-        x:{ticks:{font:{size:11}},grid:{display:false}}
+        y:{min:_yMin, max:_yMax, ticks:{maxTicksLimit:6, callback:function(v){return _fmtEUR(v);}, font:{size:11}}, grid:{color:'rgba(0,0,0,.05)'}},
+        x:{ticks:{maxTicksLimit:8, autoSkip:true, maxRotation:0, font:{size:11}}, grid:{display:false}}
       }
     }
   });
@@ -1701,7 +1693,7 @@ async function _buildDocPDF(w, sigImg, label){
   return doc;
 }
 /* ===== Signature unique (apposée sur les 2 documents) ===== */
-var _sigSt={ink:false, ok:false, blobObj:null, blobConn:null, nameObj:'', nameConn:''};
+var _sigSt={ink:false, ok:true, blobObj:null, blobConn:null, nameObj:'', nameConn:''};
 async function sigCheckCode(){
   var code=(document.getElementById('sigcode').value||'').trim();
   if(!/^[0-9]{4,8}$/.test(code)){ if(typeof toast==='function') toast('Saisissez le code re\u00e7u par email.','error'); return; }
