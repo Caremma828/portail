@@ -1621,6 +1621,30 @@ function _pcExtractSections(wrap, skipPred){
   });
   return sections;
 }
+function _computeScores(root){
+  if(!root) return {kn:0,knCat:'',risk:0,riskProfil:''};
+  var kn=0;
+  ['act','obl','nco','mon','div','str','aut','ban','imm','av','dom','pee','sci'].forEach(function(pp){ var r=root.querySelector('input[name="kn-'+pp+'"]:checked'); if(r) kn+=parseInt(r.value)||0; });
+  var gp=root.querySelector('input[name="gestion_passe"]:checked'); if(gp) kn+=parseInt(gp.value)||0;
+  for(var i=1;i<=4;i++){ var r1=root.querySelector('input[name="inf'+i+'"]:checked'); if(r1) kn+=parseInt(r1.value)||0; }
+  for(var j=1;j<=6;j++){ var r2=root.querySelector('input[name="aff'+j+'"]:checked'); if(r2) kn+=parseInt(r2.value)||0; }
+  var knCat = kn<=125?'Investisseur de Base':(kn<=171?'Investisseur Averti':'Investisseur Avanc\u00e9');
+  var risk=0; for(var z=1;z<=6;z++){ var r3=root.querySelector('input[name="risq'+z+'"]:checked'); if(r3) risk+=parseInt(r3.value)||0; }
+  var riskProfil = risk<=55?'S\u00e9curit\u00e9':(risk<=75?'Prudent':(risk<=95?'\u00c9quilibr\u00e9':'Dynamique'));
+  return {kn:kn, knCat:knCat, risk:risk, riskProfil:riskProfil};
+}
+function _pdfFindCut(canvas, idealEnd){
+  try{
+    var cc=canvas.getContext('2d'); var W=canvas.width;
+    var minEnd=idealEnd-200; if(minEnd<10) return idealEnd;
+    for(var y=idealEnd; y>=minEnd; y-=2){
+      var d=cc.getImageData(0,y,W,1).data; var white=true;
+      for(var x=0;x<d.length;x+=24){ if(d[x]<248||d[x+1]<248||d[x+2]<248){ white=false; break; } }
+      if(white) return y;
+    }
+  }catch(e){}
+  return idealEnd;
+}
 async function _buildDocPDF(w, sigImg, label){
   if(!window.jspdf||!window.jspdf.jsPDF||!window.html2canvas) return null;
   var jsPDFc=window.jspdf.jsPDF; var clientName=((CLIENT.prenom||'')+' '+(CLIENT.nom||'')).trim();
@@ -1629,6 +1653,7 @@ async function _buildDocPDF(w, sigImg, label){
   var blob=(w==='obj')?_PHTML_B64:_CONNAISSANCE_B64;
   try{ var dec=decodeURIComponent(Array.from(atob(blob)).map(function(ch){return '%'+ch.charCodeAt(0).toString(16).padStart(2,'0');}).join('')); tmp.innerHTML=dec; }catch(e){ return null; }
   document.body.appendChild(tmp); _pcRestore(tmp);
+  var _scores=(w==='conn')?_computeScores(tmp):null;
   var root=tmp; if(w==='obj'){ var ps2=tmp.querySelector('#ps2'); if(ps2) root=ps2; }
   var title=(w==='obj')?'Questionnaire Objectifs de Placement':'Connaissance & Comp\u00e9tence AMF';
   var fraisRe=/frais|honoraires|courtage|d\u00e9positaire|administratif|gestion financi|montant total/i;
@@ -1666,10 +1691,17 @@ async function _buildDocPDF(w, sigImg, label){
   });
   try{document.body.removeChild(tmp);}catch(_){ }
   var ville=''; try{ var pd=CLIENT.parcoursData||{}; ville=pd['qo-ville']||pd['qo-adresse-ville']||''; }catch(_){ } if(!ville) ville='Maisons-Laffitte';
+  if(w==='conn' && _scores){
+    body+='<div class="sec" style="margin-top:10px"><div class="sec-title">R\u00e9sultat \u2014 Score</div><div class="grid">'
+      +'<div class="row"><div class="lbl">Score connaissance</div><div class="val">'+_scores.kn+' pts \u2014 '+escHtml(_scores.knCat)+'</div></div>'
+      +'<div class="row"><div class="lbl">Score risque</div><div class="val">'+_scores.risk+' / 120 \u2014 '+escHtml(_scores.riskProfil)+'</div></div>'
+      +'</div></div>';
+  }
   body+='<div class="sec" style="margin-top:12px"><div class="sec-title">Signature du client</div>'
     +'<div style="padding:12px 8px;font-size:9.5pt">'
     +'<p>Fait \u00e0 <b>'+escHtml(ville)+'</b>, le <b>'+escHtml(label)+'</b></p>'
-    +'<p style="margin-top:6px">Sign\u00e9 \u00e9lectroniquement par <b>'+escHtml(clientName)+'</b> \u2014 mention \u00ab Lu et approuv\u00e9 \u00bb</p>'
+    +'<p style="margin-top:10px;font-size:11pt;color:#0f1e35"><b>\u00ab\u00a0Lu et approuv\u00e9\u00a0\u00bb</b></p>'
+    +'<p style="margin-top:3px">Sign\u00e9 \u00e9lectroniquement par <b>'+escHtml(clientName)+'</b></p>'
     +'<div style="margin-top:8px;padding:6px;border:1px solid #888;display:inline-block;background:#fff"><img src="'+sigImg+'" style="height:54px"></div>'
     +'</div></div>';
   body+='</div>';
@@ -1686,16 +1718,18 @@ async function _buildDocPDF(w, sigImg, label){
   await new Promise(function(r){ setTimeout(r,200); });
   var doc=new jsPDFc({unit:'mm',format:'a4'}); var pw=210, ph=297;
   try{
-    var canvas=await html2canvas(idoc.body,{scale:1.3,backgroundColor:'#ffffff',useCORS:true,logging:false,width:794,windowWidth:794});
+    var canvas=await html2canvas(idoc.body,{scale:1.2,backgroundColor:'#ffffff',useCORS:true,logging:false,width:794,windowWidth:794});
     var pageHpx=Math.floor(canvas.width*(ph/pw));
     var contentH=canvas.height;
     try{ var cc2=canvas.getContext('2d'); var W=canvas.width; for(var yy=canvas.height-1; yy>=0; yy-=4){ var dd=cc2.getImageData(0,yy,W,1).data; var nw=false; for(var xx=0;xx<dd.length;xx+=32){ if(dd[xx]<245||dd[xx+1]<245||dd[xx+2]<245){nw=true;break;} } if(nw){ contentH=Math.min(canvas.height, yy+12); break; } } }catch(e){}
     var pos=0, first=true;
     while(pos<contentH){
-      var sh=Math.min(pageHpx, contentH-pos);
+      var remaining=contentH-pos; var sh;
+      if(remaining<=pageHpx){ sh=remaining; }
+      else { var cut=_pdfFindCut(canvas, pos+pageHpx); sh=Math.max(60, cut-pos); }
       if(!first && sh < 24){ break; }
       var pc=document.createElement('canvas'); pc.width=canvas.width; pc.height=sh; var cx=pc.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,pc.width,pc.height); cx.drawImage(canvas,0,pos,canvas.width,sh,0,0,canvas.width,sh);
-      var img=pc.toDataURL('image/jpeg',0.68); if(!first) doc.addPage(); doc.addImage(img,'JPEG',0,0,pw, sh*pw/canvas.width); first=false; pos+=sh;
+      var img=pc.toDataURL('image/jpeg',0.62); if(!first) doc.addPage(); doc.addImage(img,'JPEG',0,0,pw, sh*pw/canvas.width); first=false; pos+=sh;
     }
   }catch(e){ try{document.body.removeChild(ifr);}catch(_){ } return null; }
   try{document.body.removeChild(ifr);}catch(_){ }
@@ -1746,15 +1780,33 @@ async function sigSubmit(type){
   if(!CLIENT||!CLIENT.email){ if(typeof toast==='function') toast('Session expir\u00e9e.','error'); return; }
   _pcCollect(document.getElementById(type==='obj'?'parcours-content':'connaissance-content'));
   var now=new Date(); var label=now.toLocaleDateString('fr-FR')+' \u00e0 '+now.toLocaleTimeString('fr-FR'); var iso=now.toISOString();
+  var clientFull=((CLIENT.prenom||'')+' '+(CLIENT.nom||'')).trim();
   var slug=(CLIENT.nom||'client').toLowerCase().replace(/[^a-z0-9]/g,'_');
   var sigImg=_sigCompact(c);
   if(typeof toast==='function') toast('G\u00e9n\u00e9ration du document sign\u00e9...','');
   var doc=null; try{ doc=await _buildDocPDF(type,sigImg,label); }catch(e){}
   if(!doc){ if(typeof toast==='function') toast('Module PDF en cours de chargement \u2014 r\u00e9essayez dans un instant.','error'); return; }
   var nm=(type==='obj'?'questionnaire_objectifs_signe_':'connaissance_competence_signe_')+slug+'.pdf';
-  var b64=''; try{ b64=doc.output('datauristring'); }catch(_){}
-  try{ if(type==='obj'){ _sigSt.blobObj=doc.output('blob'); _sigSt.nameObj=nm; } else { _sigSt.blobConn=doc.output('blob'); _sigSt.nameConn=nm; } }catch(_){}
   var titre=(type==='obj'?'Questionnaire Objectifs sign\u00e9':'Connaissance & comp\u00e9tence sign\u00e9');
+  var pdfBlob=null, b64=''; try{ pdfBlob=doc.output('blob'); }catch(_){}
+  try{ b64=doc.output('datauristring'); }catch(_){}
+  try{ if(type==='obj'){ _sigSt.blobObj=pdfBlob; _sigSt.nameObj=nm; } else { _sigSt.blobConn=pdfBlob; _sigSt.nameConn=nm; } }catch(_){}
+
+  // 1) Notification fiable au conseiller : email avec le PDF en pi\u00e8ce jointe (Web3Forms, ind\u00e9pendant de JSONBin)
+  var emailSent=false;
+  try{
+    var fd=new FormData();
+    fd.append('access_key', W3F_KEY);
+    fd.append('subject', 'Questionnaire sign\u00e9 \u2014 '+clientFull);
+    fd.append('from_name', 'Espace client Caremma');
+    fd.append('email', 'marc.reverseau@caremmafinance.com');
+    fd.append('message', clientFull+' ('+CLIENT.email+') a sign\u00e9 \u00ab '+titre+' \u00bb le '+label+'. Document en pi\u00e8ce jointe.');
+    if(pdfBlob){ try{ fd.append('attachment', pdfBlob, nm); }catch(_){} }
+    emailSent = await fetch('https://api.web3forms.com/submit',{method:'POST',body:fd}).then(function(x){return x.ok;}).catch(function(){return false;});
+  }catch(_){}
+
+  // 2) Enregistrement c\u00f4t\u00e9 conseiller (CRM via JSONBin) \u2014 best effort, all\u00e9g\u00e9 + d\u00e9doublonn\u00e9
+  var crmOk=false;
   try{
     var data=await jbGet(MSG_BIN); var k=eKey(CLIENT.email);
     if(!data.messages) data.messages={};
@@ -1765,15 +1817,22 @@ async function sigSubmit(type){
     en.signStatus=en.signStatus||{}; en.signStatus[type]={label:label,signedAt:iso};
     en.parcoursStatus=(en.signStatus.obj&&en.signStatus.conn)?'signed':'partial';
     if(!en.docs) en.docs=[];
-    en.docs.unshift({ id:'sig_'+type+'_'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', fromClient:true, signedAt:label, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko', data:b64 });
+    en.docs=en.docs.filter(function(d){ return !(d.id && (''+d.id).indexOf('sig_'+type+'_')===0); });
+    en.docs.unshift({ id:'sig_'+type+'_'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', fromClient:true, signed:true, signedAt:label, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko', data:b64 });
     if(!en.msgs) en.msgs=[];
     en.msgs.push({ from:'client', text:titre+' le '+label, date:label, ts:Date.now() });
     await jbPut(MSG_BIN, data);
+    crmOk=true;
+  }catch(err){ crmOk=false; }
+
+  // 3) R\u00e9sultat : succ\u00e8s si au moins un canal a abouti
+  if(crmOk || emailSent){
     if(r){ r.style.display='block'; r.innerHTML='<div style="background:#e6f9ef;border:1px solid #27ae60;color:#1a7a3a;padding:12px 14px;border-radius:8px;font-size:13px"><b>\u2705 '+titre+' \u2014 transmis \u00e0 votre conseiller</b><br>Sign\u00e9 le '+label+'.</div><div style="margin-top:10px"><button class="btn btn-primary" onclick="sigDownload(\''+type+'\')">\ud83d\udcc4 T\u00e9l\u00e9charger le PDF</button></div>'; }
     if(typeof toast==='function') toast('Sign\u00e9 et transmis \u2713','success');
     if(typeof renderAccueil==='function'){ try{renderAccueil();}catch(_){} }
-  }catch(err){
-    if(r){ r.style.display='block'; r.innerHTML='<div style="background:#fff4e5;border:1px solid #e0a000;color:#7a5200;padding:12px;border-radius:8px;font-size:13px">\u26a0\ufe0f Signature enregistr\u00e9e mais l\'envoi a \u00e9chou\u00e9 ('+(err&&err.message||'r\u00e9seau')+'). T\u00e9l\u00e9chargez votre PDF.</div><div style="margin-top:10px"><button class="btn btn-primary" onclick="sigDownload(\''+type+'\')">\ud83d\udcc4 T\u00e9l\u00e9charger</button></div>'; }
+  } else {
+    if(r){ r.style.display='block'; r.innerHTML='<div style="background:#fff4e5;border:1px solid #e0a000;color:#7a5200;padding:12px;border-radius:8px;font-size:13px">\u26a0\ufe0f Votre signature est enregistr\u00e9e mais la transmission automatique a \u00e9chou\u00e9 (r\u00e9seau). T\u00e9l\u00e9chargez votre PDF ci-dessous et transmettez-le \u00e0 votre conseiller.</div><div style="margin-top:10px"><button class="btn btn-primary" onclick="sigDownload(\''+type+'\')">\ud83d\udcc4 T\u00e9l\u00e9charger le PDF</button></div>'; }
+    if(typeof toast==='function') toast('Transmission impossible \u2014 t\u00e9l\u00e9chargez votre PDF.','error');
   }
 }
 function sigDownload(w){ var bl=(w==='obj')?_sigSt.blobObj:_sigSt.blobConn; var nm=(w==='obj')?_sigSt.nameObj:_sigSt.nameConn; if(!bl){ if(typeof toast==='function') toast('Aucun PDF.','error'); return; } var u=URL.createObjectURL(bl); var a=document.createElement('a'); a.href=u; a.download=nm||'document.pdf'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(u);},1500); }
