@@ -289,8 +289,7 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--navy);col
   <div class="nav-bar">
     <button class="nav-btn on" id="nav-accueil" onclick="goPage('accueil',this)">🏠 Accueil</button>
     <button class="nav-btn" id="nav-reporting" onclick="goPage('reporting',this)">📊 Portefeuille</button>
-    <button class="nav-btn" id="nav-parcours" onclick="goPage('parcours',this)">📋 Questionnaire objectifs</button>
-    <button class="nav-btn" id="nav-connaissance" onclick="goPage('connaissance',this)">📊 Questionnaire connaissance</button>
+    <button class="nav-btn" id="nav-admin" onclick="goPage('admin',this)">📋 Administratif &amp; mise à jour</button>
     <button class="nav-btn" id="nav-documents" onclick="goPage('documents',this)">📎 Documents</button>
     <button class="nav-btn" id="nav-messagerie" onclick="goPage('messagerie',this)">💬 Messagerie <span class="nav-badge" id="nav-badge-msg" style="display:none">!</span></button>
   </div>
@@ -304,9 +303,11 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--navy);col
     </div>
 
     <!-- MON DOSSIER / PARCOURS -->
-    <div class="pg" id="pg-parcours">
-      <div class="ph"><h2>Questionnaire objectifs</h2><p>Vos objectifs patrimoniaux · Situation financière · Fiscalité</p></div>
-      <div id="parcours-content"></div><div class="card" id="sign-card" style="margin-top:18px;border:1px solid var(--cream2,#e4e7ef)"><h3 style="margin:0 0 6px;color:var(--navy,#0A1628);font-size:16px">✍️ Signature de votre dossier</h3><p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;line-height:1.6">Signez <b>une seule fois</b> : votre signature sera apposée sur vos <b>deux documents</b> (Questionnaire Objectifs et Connaissance &amp; compétence), transmis automatiquement à votre conseiller. Vous pourrez les télécharger en PDF.</p><p style="font-size:12.5px;color:var(--navy);margin:0 0 10px"><b>✍️ Signez ci-dessous</b> pour finaliser et transmettre votre dossier.</p><div id="siggate" style="display:none"><p style="font-size:12.5px;color:var(--navy);margin:0 0 8px"><b>🔒 Pour signer</b>, saisissez le <b>code à 6 chiffres</b> reçu par email (votre code d'accès Caremma Finance).</p><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="sigcode" inputmode="numeric" maxlength="6" placeholder="• • • • • •" style="font-size:18px;letter-spacing:4px;text-align:center;width:160px;padding:9px;border:1.5px solid var(--cream2,#cdd3e0);border-radius:8px"><button class="btn btn-primary" onclick="sigCheckCode()">Valider le code</button></div></div><div id="sigarea"><canvas id="sigpad" width="600" height="180" style="border:1.5px solid var(--cream2,#cdd3e0);border-radius:8px;background:#fff;cursor:crosshair;display:block;width:100%;max-width:520px;height:180px;touch-action:none"></canvas><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" onclick="sigClear()">Effacer</button><button class="btn btn-primary" onclick="sigSubmit()">✍️ Signer et transmettre à mon conseiller</button></div></div><div id="sigres" style="display:none;margin-top:14px"></div></div>
+    <div class="pg" id="pg-admin">
+      <div class="ph"><h2>Administratif &amp; mise à jour</h2><p>Vos questionnaires réglementaires. Vous pouvez en compléter un seul ou les deux — <b>chacun se signe séparément</b>.</p></div>
+      <div class="doc-tabs"><button class="doc-tab on" data-a="objectifs" onclick="adminTab('objectifs',this)">📋 Questionnaire objectifs</button><button class="doc-tab" data-a="connaissance" onclick="adminTab('connaissance',this)">📊 Questionnaire connaissance</button></div>
+      <div class="admin-pane" id="adminpane-objectifs" style="display:block"><div id="parcours-content"></div><div class="card" id="sign-card-obj" style="margin-top:18px;border:1px solid var(--cream2,#e4e7ef)"><h3 style="margin:0 0 6px;color:var(--navy,#0A1628);font-size:16px">✍️ Signature — Questionnaire Objectifs</h3><p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;line-height:1.6">Signez ci-dessous pour valider <b>ce questionnaire</b>. Le document signé est transmis automatiquement à votre conseiller et téléchargeable en PDF.</p><canvas id="sigpad-obj" width="600" height="180" style="border:1.5px solid var(--cream2,#cdd3e0);border-radius:8px;background:#fff;cursor:crosshair;display:block;width:100%;max-width:520px;height:180px;touch-action:none"></canvas><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" onclick="sigClear('obj')">Effacer</button><button class="btn btn-primary" onclick="sigSubmit('obj')">✍️ Signer et transmettre</button></div><div id="sigres-obj" style="display:none;margin-top:14px"></div></div></div>
+      <div class="admin-pane" id="adminpane-connaissance" style="display:none"><div id="connaissance-content"></div><div class="card" id="sign-card-conn" style="margin-top:18px;border:1px solid var(--cream2,#e4e7ef)"><h3 style="margin:0 0 6px;color:var(--navy,#0A1628);font-size:16px">✍️ Signature — Questionnaire Connaissance</h3><p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;line-height:1.6">Signez ci-dessous pour valider <b>ce questionnaire</b>. Le document signé est transmis automatiquement à votre conseiller et téléchargeable en PDF.</p><canvas id="sigpad-conn" width="600" height="180" style="border:1.5px solid var(--cream2,#cdd3e0);border-radius:8px;background:#fff;cursor:crosshair;display:block;width:100%;max-width:520px;height:180px;touch-action:none"></canvas><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" onclick="sigClear('conn')">Effacer</button><button class="btn btn-primary" onclick="sigSubmit('conn')">✍️ Signer et transmettre</button></div><div id="sigres-conn" style="display:none;margin-top:14px"></div></div></div>
     </div>
 
     <!-- DOCUMENTS -->
@@ -361,10 +362,7 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--navy);col
 
 
     <!-- QUESTIONNAIRE CONNAISSANCE -->
-    <div class="pg" id="pg-connaissance">
-      <div class="ph"><h2>Questionnaire connaissance</h2><p>Connaissance & Compétence · Évaluation du risque · Profil AMF</p></div>
-      <div id="connaissance-content"></div><div class="card" style="margin-top:18px;border:1px dashed var(--cream2,#e4e7ef);background:#fbfaf6"><p style="font-size:12.5px;color:var(--muted);margin:0;line-height:1.6">✍️ Une fois vos deux questionnaires complétés, <b>signez votre dossier</b> en bas du questionnaire <b>« Mon parcours / Objectifs »</b>. Une seule signature suffit : elle figurera sur vos deux documents (Objectifs et Connaissance &amp; compétence).</p></div>
-    </div>
+    
 
     <!-- MESSAGERIE -->
     <div class="pg" id="pg-messagerie">
@@ -599,6 +597,8 @@ function doLogout(){
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
 function goPage(pg, btn){ if(pg==='reportings'){ _pendingDocTab='reportings'; pg='documents'; btn=null; }
+  if(pg==='parcours'){ _adminDefault='objectifs'; pg='admin'; btn=null; }
+  if(pg==='connaissance'){ _adminDefault='connaissance'; pg='admin'; btn=null; }
   document.querySelectorAll('.pg').forEach(function(p){ p.classList.remove('on'); });
   document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('on'); });
   var pgEl = document.getElementById('pg-'+pg);
@@ -607,11 +607,10 @@ function goPage(pg, btn){ if(pg==='reportings'){ _pendingDocTab='reportings'; pg
   else{ var nb=document.getElementById('nav-'+pg); if(nb) nb.classList.add('on'); }
   document.getElementById('main-content').scrollTop = 0;
   if(pg==='accueil')   renderAccueil();
-  if(pg==='parcours'){  renderParcours(); try{sigInit();}catch(e){} }
   if(pg==='documents') renderDocsHub();
   if(pg==='reporting') loadReporting(); 
   if(pg==='messagerie'){ loadMsgs(); }
-  if(pg==='connaissance') renderConnaissance();
+  if(pg==='admin'){ adminTab(_adminDefault||'objectifs'); _adminDefault=null; }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -714,7 +713,7 @@ function renderParcours(){
     });
     localStorage.setItem('caremma_c_'+eKey(CLIENT.email), JSON.stringify(CLIENT));
     toast('Questionnaire envoyé à votre conseiller ✓', 'success');
-    var nb=document.getElementById('nav-connaissance'); goPage('connaissance', nb);
+    goPage('connaissance');
   };
   nav.appendChild(btn);
   el.appendChild(nav);
@@ -1693,7 +1692,7 @@ async function _buildDocPDF(w, sigImg, label){
   return doc;
 }
 /* ===== Signature unique (apposée sur les 2 documents) ===== */
-var _sigSt={ink:false, ok:true, blobObj:null, blobConn:null, nameObj:'', nameConn:''};
+var _sigSt={ink:{obj:false,conn:false}, blobObj:null, blobConn:null, nameObj:'', nameConn:''}; var _adminDefault=null;
 async function sigCheckCode(){
   var code=(document.getElementById('sigcode').value||'').trim();
   if(!/^[0-9]{4,8}$/.test(code)){ if(typeof toast==='function') toast('Saisissez le code re\u00e7u par email.','error'); return; }
@@ -1707,33 +1706,45 @@ async function sigCheckCode(){
     if(typeof toast==='function') toast('Code valid\u00e9 \u2014 vous pouvez signer \u2713','success');
   }catch(err){ if(typeof toast==='function') toast('V\u00e9rification impossible : '+(err&&err.message||'r\u00e9seau'),'error'); }
 }
-function sigInit(){
-  var c=document.getElementById('sigpad'); if(!c||c._b) return; c._b=true;
+function sigInit(type){
+  type=type||'obj';
+  var c=document.getElementById('sigpad-'+type); if(!c||c._b) return; c._b=true;
   var ctx=c.getContext('2d'); ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#0A1628'; var dr=false;
   function pos(ev){ var r=c.getBoundingClientRect(); var t=(ev.touches&&ev.touches[0])||ev; return {x:(t.clientX-r.left)*(c.width/r.width),y:(t.clientY-r.top)*(c.height/r.height)}; }
-  function st(ev){ ev.preventDefault(); dr=true; var p=pos(ev); ctx.beginPath(); ctx.moveTo(p.x,p.y); }
-  function mv(ev){ if(!dr) return; ev.preventDefault(); var p=pos(ev); ctx.lineTo(p.x,p.y); ctx.stroke(); _sigSt.ink=true; }
+  function st(ev){ ev.preventDefault(); dr=true; var pp=pos(ev); ctx.beginPath(); ctx.moveTo(pp.x,pp.y); }
+  function mv(ev){ if(!dr) return; ev.preventDefault(); var pp=pos(ev); ctx.lineTo(pp.x,pp.y); ctx.stroke(); _sigSt.ink[type]=true; }
   function en(){ dr=false; }
   c.addEventListener('mousedown',st); c.addEventListener('mousemove',mv); window.addEventListener('mouseup',en);
   c.addEventListener('touchstart',st,{passive:false}); c.addEventListener('touchmove',mv,{passive:false}); c.addEventListener('touchend',en);
 }
-function sigClear(){ var c=document.getElementById('sigpad'); if(c){ c.getContext('2d').clearRect(0,0,c.width,c.height); _sigSt.ink=false; } var r=document.getElementById('sigres'); if(r){ r.style.display='none'; r.innerHTML=''; } }
+function sigClear(type){ type=type||'obj'; var c=document.getElementById('sigpad-'+type); if(c){ c.getContext('2d').clearRect(0,0,c.width,c.height); _sigSt.ink[type]=false; } var r=document.getElementById('sigres-'+type); if(r){ r.style.display='none'; r.innerHTML=''; }
+
+ }
+function adminTab(which, btn){
+  which=which||'objectifs';
+  ['objectifs','connaissance'].forEach(function(w){ var pane=document.getElementById('adminpane-'+w); if(pane) pane.style.display=(w===which)?'block':'none'; });
+  var tabs=document.querySelectorAll('#pg-admin .doc-tab'); tabs.forEach(function(t){ t.classList.remove('on'); });
+  if(btn) btn.classList.add('on'); else { var b=document.querySelector('#pg-admin .doc-tab[data-a="'+which+'"]'); if(b) b.classList.add('on'); }
+  if(which==='objectifs'){ try{renderParcours();}catch(e){} try{sigInit('obj');}catch(e){} }
+  else { try{renderConnaissance();}catch(e){} try{sigInit('conn');}catch(e){} }
+}
 function _sigCompact(c){ try{ var tw=340, th=Math.round(c.height*(tw/c.width)); var t=document.createElement('canvas'); t.width=tw; t.height=th; var x=t.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,tw,th); x.drawImage(c,0,0,tw,th); return t.toDataURL('image/jpeg',0.72); }catch(e){ return c.toDataURL('image/png'); } }
-async function sigSubmit(){
-  var c=document.getElementById('sigpad'); var r=document.getElementById('sigres');
-  if(!_sigSt.ok){ if(typeof toast==='function') toast('Validez d\'abord le code re\u00e7u par email.','error'); return; }
-  if(!c||!_sigSt.ink){ if(typeof toast==='function') toast('Merci de dessiner votre signature.','error'); return; }
+async function sigSubmit(type){
+  type=type||'obj';
+  var c=document.getElementById('sigpad-'+type); var r=document.getElementById('sigres-'+type);
+  if(!c||!_sigSt.ink[type]){ if(typeof toast==='function') toast('Merci de dessiner votre signature.','error'); return; }
   if(!CLIENT||!CLIENT.email){ if(typeof toast==='function') toast('Session expir\u00e9e.','error'); return; }
-  _pcCollect(document.getElementById('parcours-content')); _pcCollect(document.getElementById('connaissance-content'));
+  _pcCollect(document.getElementById(type==='obj'?'parcours-content':'connaissance-content'));
   var now=new Date(); var label=now.toLocaleDateString('fr-FR')+' \u00e0 '+now.toLocaleTimeString('fr-FR'); var iso=now.toISOString();
   var slug=(CLIENT.nom||'client').toLowerCase().replace(/[^a-z0-9]/g,'_');
   var sigImg=_sigCompact(c);
-  if(typeof toast==='function') toast('G\u00e9n\u00e9ration de vos documents sign\u00e9s...','');
-  var dObj=null,dConn=null; try{ dObj=await _buildDocPDF('obj',sigImg,label); dConn=await _buildDocPDF('conn',sigImg,label); }catch(e){}
-  if(!dObj||!dConn){ if(typeof toast==='function') toast('Module PDF en cours de chargement \u2014 r\u00e9essayez dans un instant.','error'); return; }
-  try{ _sigSt.blobObj=dObj.output('blob'); _sigSt.blobConn=dConn.output('blob'); }catch(_){}
-  _sigSt.nameObj='questionnaire_objectifs_signe_'+slug+'.pdf'; _sigSt.nameConn='connaissance_competence_signe_'+slug+'.pdf';
-  var b64Obj='',b64Conn=''; try{ b64Obj=dObj.output('datauristring'); b64Conn=dConn.output('datauristring'); }catch(_){}
+  if(typeof toast==='function') toast('G\u00e9n\u00e9ration du document sign\u00e9...','');
+  var doc=null; try{ doc=await _buildDocPDF(type,sigImg,label); }catch(e){}
+  if(!doc){ if(typeof toast==='function') toast('Module PDF en cours de chargement \u2014 r\u00e9essayez dans un instant.','error'); return; }
+  var nm=(type==='obj'?'questionnaire_objectifs_signe_':'connaissance_competence_signe_')+slug+'.pdf';
+  var b64=''; try{ b64=doc.output('datauristring'); }catch(_){}
+  try{ if(type==='obj'){ _sigSt.blobObj=doc.output('blob'); _sigSt.nameObj=nm; } else { _sigSt.blobConn=doc.output('blob'); _sigSt.nameConn=nm; } }catch(_){}
+  var titre=(type==='obj'?'Questionnaire Objectifs sign\u00e9':'Connaissance & comp\u00e9tence sign\u00e9');
   try{
     var data=await jbGet(MSG_BIN); var k=eKey(CLIENT.email);
     if(!data.messages) data.messages={};
@@ -1741,18 +1752,18 @@ async function sigSubmit(){
     var en=data.messages[k];
     en.parcoursData=CLIENT.parcoursData||en.parcoursData||{};
     en.identite={nom:CLIENT.nom,prenom:CLIENT.prenom,email:CLIENT.email,tel:CLIENT.tel||''};
-    en.parcoursStatus='signed'; en.signature={label:label,signedAt:iso};
+    en.signStatus=en.signStatus||{}; en.signStatus[type]={label:label,signedAt:iso};
+    en.parcoursStatus=(en.signStatus.obj&&en.signStatus.conn)?'signed':'partial';
     if(!en.docs) en.docs=[];
-    en.docs.unshift({ id:'sig_conn_'+Date.now(), nom:'Connaissance & comp\u00e9tence sign\u00e9', name:_sigSt.nameConn, cat:'Signature', fromClient:true, signedAt:label, date:label, status:'ok', size:Math.round(b64Conn.length/1024)+' Ko', data:b64Conn });
-    en.docs.unshift({ id:'sig_obj_'+Date.now(), nom:'Questionnaire Objectifs sign\u00e9', name:_sigSt.nameObj, cat:'Signature', fromClient:true, signedAt:label, date:label, status:'ok', size:Math.round(b64Obj.length/1024)+' Ko', data:b64Obj });
+    en.docs.unshift({ id:'sig_'+type+'_'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', fromClient:true, signedAt:label, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko', data:b64 });
     if(!en.msgs) en.msgs=[];
-    en.msgs.push({ from:'client', text:'Dossier sign\u00e9 (Objectifs + Connaissance) le '+label, date:label, ts:Date.now() });
+    en.msgs.push({ from:'client', text:titre+' le '+label, date:label, ts:Date.now() });
     await jbPut(MSG_BIN, data);
-    if(r){ r.style.display='block'; r.innerHTML='<div style="background:#e6f9ef;border:1px solid #27ae60;color:#1a7a3a;padding:12px 14px;border-radius:8px;font-size:13px"><b>\u2705 Dossier sign\u00e9 et transmis \u00e0 votre conseiller</b><br>Vos deux documents portent votre signature (le '+label+').</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" onclick="sigDownload(\'obj\')">\ud83d\udcc4 Objectifs (PDF)</button><button class="btn btn-primary" onclick="sigDownload(\'conn\')">\ud83d\udcc4 Connaissance & comp\u00e9tence (PDF)</button></div>'; }
+    if(r){ r.style.display='block'; r.innerHTML='<div style="background:#e6f9ef;border:1px solid #27ae60;color:#1a7a3a;padding:12px 14px;border-radius:8px;font-size:13px"><b>\u2705 '+titre+' \u2014 transmis \u00e0 votre conseiller</b><br>Sign\u00e9 le '+label+'.</div><div style="margin-top:10px"><button class="btn btn-primary" onclick="sigDownload(\''+type+'\')">\ud83d\udcc4 T\u00e9l\u00e9charger le PDF</button></div>'; }
     if(typeof toast==='function') toast('Sign\u00e9 et transmis \u2713','success');
     if(typeof renderAccueil==='function'){ try{renderAccueil();}catch(_){} }
   }catch(err){
-    if(r){ r.style.display='block'; r.innerHTML='<div style="background:#fff4e5;border:1px solid #e0a000;color:#7a5200;padding:12px;border-radius:8px;font-size:13px">\u26a0\ufe0f Signature enregistr\u00e9e mais l\'envoi a \u00e9chou\u00e9 ('+(err&&err.message||'r\u00e9seau')+'). T\u00e9l\u00e9chargez vos PDF.</div><div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-primary" onclick="sigDownload(\'obj\')">\ud83d\udcc4 Objectifs</button><button class="btn btn-primary" onclick="sigDownload(\'conn\')">\ud83d\udcc4 Connaissance</button></div>'; }
+    if(r){ r.style.display='block'; r.innerHTML='<div style="background:#fff4e5;border:1px solid #e0a000;color:#7a5200;padding:12px;border-radius:8px;font-size:13px">\u26a0\ufe0f Signature enregistr\u00e9e mais l\'envoi a \u00e9chou\u00e9 ('+(err&&err.message||'r\u00e9seau')+'). T\u00e9l\u00e9chargez votre PDF.</div><div style="margin-top:10px"><button class="btn btn-primary" onclick="sigDownload(\''+type+'\')">\ud83d\udcc4 T\u00e9l\u00e9charger</button></div>'; }
   }
 }
 function sigDownload(w){ var bl=(w==='obj')?_sigSt.blobObj:_sigSt.blobConn; var nm=(w==='obj')?_sigSt.nameObj:_sigSt.nameConn; if(!bl){ if(typeof toast==='function') toast('Aucun PDF.','error'); return; } var u=URL.createObjectURL(bl); var a=document.createElement('a'); a.href=u; a.download=nm||'document.pdf'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(u);},1500); }
