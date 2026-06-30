@@ -426,18 +426,30 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--navy);col
 // ═══════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════
-var JBKEY = '$2a$10$H/fTo.AwPWr.044IVk/qoOQeZHgnUicO63Oobmk2KqcOUB7LFSGym';
-
+/* ═══ Accès données via le proxy sécurisé (la clé master ne quitte plus jamais le serveur) ═══ */
+var API_BASE = '';   // ← À RENSEIGNER : URL du Cloudflare Worker, ex. https://caremma-proxy.VOTRECOMPTE.workers.dev
+var _sessTok = '';   // jeton de session signé, fourni par le Worker à la connexion
+async function _api(action, payload, useTok){
+  if(!API_BASE){ throw new Error('Espace client non configuré (API_BASE manquant).'); }
+  var headers={'Content-Type':'application/json'};
+  if(useTok && _sessTok) headers['Authorization']='Bearer '+_sessTok;
+  var r=await fetch(API_BASE.replace(/\/+$/,''), {method:'POST', headers:headers, body:JSON.stringify(Object.assign({action:action}, payload||{}))});
+  var data={}; try{ data=await r.json(); }catch(_){}
+  if(r.status===401){ _sessTok=''; try{ sessionStorage.removeItem('caremma_tok'); }catch(e){} throw new Error('Session expirée'); }
+  if(!r.ok) throw new Error(data.error||('HTTP '+r.status));
+  return data;
+}
 async function jbGet(id){
-  var timeout=new Promise(function(_,reject){setTimeout(function(){reject(new Error('timeout'));},8000);});
-  var request=fetch('https://api.jsonbin.io/v3/b/'+id+'/latest',{headers:{'X-Master-Key':JBKEY,'X-Bin-Meta':'false'}}).then(function(r){if(!r.ok) throw new Error('JB '+r.status); return r.json();});
-  return Promise.race([request,timeout]);
+  if(typeof CLIENTS_BIN!=='undefined' && id===CLIENTS_BIN){ return {clients:[]}; }   // accès direct supprimé (login via Worker)
+  var d=await _api('me', {}, true);
+  return { messages: d.messages||{}, publications: d.publications||[] };
 }
-async function jbPut(id,data){
-  const r=await fetch('https://api.jsonbin.io/v3/b/'+id,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':JBKEY},body:JSON.stringify(data)});
-  if(!r.ok) throw new Error('JB PUT '+r.status);
-  return r.json();
+async function jbPut(id, data){
+  var k=(typeof CLIENT!=='undefined' && CLIENT && CLIENT.email) ? eKey(CLIENT.email) : null;
+  var patch=(k && data && data.messages && data.messages[k]) ? data.messages[k] : (data||{});
+  return _api('save', { patch: patch }, true);
 }
+
 var MSG_BIN = '69efcf8736566621a8fb341e';
 var CLIENTS_BIN = '69efcc82856a6821897cc233';
 var W3F_KEY = 'c14c26e3-6fef-41d0-acf8-e40e8866453f';
@@ -517,56 +529,51 @@ function _setMode(mode, email){
 }
 function loginEditEmail(){ _liClient=null; _liServerPwd=null; var p=document.getElementById('li-pass'); if(p) p.value=''; var c=document.getElementById('li-code'); if(c) c.value=''; _setMode('email'); setTimeout(function(){ var e=document.getElementById('li-email'); if(e) e.focus(); },60); }
 function loginAction(){ if(_loginMode==='password') return doLogin(); if(_loginMode==='code') return validateInviteCode(); return loginContinue(); }
-function loginContinue(){
+async function loginContinue(){
   var email=(document.getElementById('li-email').value||'').trim().toLowerCase();
   var err=document.getElementById('li-err'); err.style.display='none';
   if(!/.+@.+\..+/.test(email)){ err.textContent='Adresse email invalide.'; err.style.display='block'; return; }
   var btn=document.getElementById('li-btn'); btn.textContent='Vérification...';
   var localAuth=localStorage.getItem('caremma_auth_'+eKey(email));
   if(localAuth){ btn.textContent='Continuer →'; _setMode('password', email); return; }
-  Promise.all([jbGet(CLIENTS_BIN).catch(function(){return{};}), jbGet(MSG_BIN).catch(function(){return{};})]).then(function(arr){
+  try{
+    var res=await _api('check', {email:email});
     btn.textContent='Continuer →';
-    var clients=(arr[0]&&arr[0].clients)||[];
-    var client=clients.find(function(c){return (c.email||'').toLowerCase()===email;});
-    if(!client && typeof KNOWN_CLIENTS!=='undefined'){ client=KNOWN_CLIENTS.find(function(c){return (c.email||'').toLowerCase()===email;}); }
-    if(!client){ err.textContent='Aucun espace n\'est associé à cet email. Contactez votre conseiller.'; err.style.display='block'; return; }
-    _liClient=client;
-    var en=(arr[1]&&arr[1].messages&&arr[1].messages[eKey(email)])||{};
-    if(en.pwd){ _liServerPwd=en.pwd; _setMode('password', email); }
-    else { _setMode('code', email); }
-  }).catch(function(){ document.getElementById('li-btn').textContent='Continuer →'; var e=document.getElementById('li-err'); e.textContent='Connexion impossible, réessayez dans un instant.'; e.style.display='block'; });
+    if(!res.exists){ err.textContent='Aucun espace n\'est associé à cet email. Contactez votre conseiller.'; err.style.display='block'; return; }
+    _liClient={ email:email, prenom:res.prenom||'', nom:res.nom||'' };
+    if(res.hasPwd){ _setMode('password', email); } else { _setMode('code', email); }
+  }catch(e){ btn.textContent='Continuer →'; err.textContent='Connexion impossible, réessayez.'; err.style.display='block'; }
 }
-function doLogin(){
+async function doLogin(){
   var email=(document.getElementById('li-email').value||'').trim().toLowerCase();
   var pass=(document.getElementById('li-pass').value||'').trim();
   var err=document.getElementById('li-err'); err.style.display='none';
   if(!pass){ err.textContent='Saisissez votre mot de passe.'; err.style.display='block'; return; }
-  var localAuth=localStorage.getItem('caremma_auth_'+eKey(email));
-  if(localAuth){ try{ var a=JSON.parse(localAuth); if((a.pwdHash&&a.pwdHash===_pwHash(pass))||(a.password&&a.password===pass)){ _doLoginSuccess(email,a); return; } }catch(e){} }
-  if(_liServerPwd){ if(_pwHash(pass)===_liServerPwd){ _doLoginSuccess(email,null); return; } err.textContent='Mot de passe incorrect.'; err.style.display='block'; return; }
   var btn=document.getElementById('li-btn'); btn.textContent='Connexion...';
-  jbGet(MSG_BIN).then(function(d){ btn.textContent='Se connecter →'; var en=(d&&d.messages&&d.messages[eKey(email)])||{}; if(en.pwd&&_pwHash(pass)===en.pwd){ _doLoginSuccess(email,null); return; } err.textContent='Mot de passe incorrect.'; err.style.display='block'; }).catch(function(){ document.getElementById('li-btn').textContent='Se connecter →'; err.textContent='Connexion impossible, réessayez.'; err.style.display='block'; });
+  try{
+    var res=await _api('login', {email:email, password:pass});
+    btn.textContent='Se connecter →';
+    if(!res.ok){ err.textContent='Mot de passe incorrect.'; err.style.display='block'; return; }
+    _sessTok=res.token;
+    _doLoginSuccess(email, { prenom:(res.client&&res.client.prenom)||'', nom:(res.client&&res.client.nom)||'' });
+  }catch(e){ document.getElementById('li-btn').textContent='Se connecter →'; err.textContent='Connexion impossible, réessayez.'; err.style.display='block'; }
 }
-function validateInviteCode(){
+async function validateInviteCode(){
   var email=(document.getElementById('li-email').value||'').trim().toLowerCase();
   var code=(document.getElementById('li-code').value||'').trim();
   var err=document.getElementById('li-err'); err.style.display='none';
   if(!code){ err.textContent='Saisissez le code reçu par email.'; err.style.display='block'; return; }
   var btn=document.getElementById('li-btn'); btn.textContent='Vérification...';
-  var proceed=function(client){
+  try{
+    var res=await _api('login', {email:email, code:code});
     btn.textContent='Valider le code →';
-    if(!client){ err.textContent='Aucun espace n\'est associé à cet email. Contactez votre conseiller.'; err.style.display='block'; return; }
-    if((''+client.code)!==(''+code)){ err.textContent='Code incorrect. Vérifiez l\'email reçu de Caremma Finance.'; err.style.display='block'; return; }
-    _liClient=client;
-    CLIENT={ email:email, prenom:client.prenom||'', nom:client.nom||'', docs:[],msgs:[],parcoursData:{} };
-    var _ck='caremma_code_'+eKey(email), _prev=localStorage.getItem(_ck);
-    if(_prev!==(''+client.code)){ localStorage.removeItem('caremma_c_'+eKey(email)); localStorage.removeItem('caremma_auth_'+eKey(email)); localStorage.setItem(_ck, ''+client.code); }
-    else { var saved=localStorage.getItem('caremma_c_'+eKey(email)); if(saved){ try{ CLIENT=Object.assign(CLIENT,JSON.parse(saved)); }catch(e){} } }
+    if(!res.ok){ err.textContent=(res.error==='code')?'Code incorrect. Vérifiez l\'email reçu de Caremma Finance.':'Aucun espace n\'est associé à cet email. Contactez votre conseiller.'; err.style.display='block'; return; }
+    _sessTok=res.token; _liClient=res.client;
+    CLIENT={ email:email, prenom:(res.client&&res.client.prenom)||'', nom:(res.client&&res.client.nom)||'', docs:[],msgs:[],parcoursData:{} };
+    try{ var saved=localStorage.getItem('caremma_c_'+eKey(email)); if(saved){ CLIENT=Object.assign(CLIENT,JSON.parse(saved)); } }catch(e){}
     document.getElementById('login-screen').style.display='none';
     document.getElementById('set-pwd-screen').style.display='flex';
-  };
-  if(_liClient && _liClient.code!=null && (''+(_liClient.email||'')).toLowerCase()===email){ proceed(_liClient); return; }
-  jbGet(CLIENTS_BIN).then(function(data){ var clients=(data&&data.clients)||[]; var client=clients.find(function(c){return (c.email||'').toLowerCase()===email;}); if(!client && typeof KNOWN_CLIENTS!=='undefined'){ client=KNOWN_CLIENTS.find(function(c){return (c.email||'').toLowerCase()===email;}); } proceed(client); }).catch(function(){ btn.textContent='Valider le code →'; err.textContent='Connexion impossible, réessayez.'; err.style.display='block'; });
+  }catch(e){ btn.textContent='Valider le code →'; err.textContent='Connexion impossible, réessayez.'; err.style.display='block'; }
 }
 function _doLoginSuccess(email, auth){
   CLIENT=Object.assign({email:email,prenom:'',nom:'',docs:[],msgs:[],parcoursData:{}}, (auth&&auth.clientData)||{});
@@ -592,13 +599,7 @@ function setPassword(){
   try{ localStorage.setItem('caremma_auth_'+eKey(CLIENT.email), JSON.stringify({ pwdHash:hash, prenom:CLIENT.prenom, nom:CLIENT.nom, clientData:CLIENT })); }catch(e){}
   var sb=document.querySelector('#set-pwd-screen .login-btn'); if(sb) sb.textContent='Enregistrement...';
   function done(){ try{ if(history.replaceState) history.replaceState(null,'',location.pathname); }catch(e){} sessionStorage.setItem('caremma_sess', JSON.stringify(CLIENT)); document.getElementById('set-pwd-screen').style.display='none'; if(typeof toast==='function') toast('Mot de passe créé ✓ Bienvenue '+(CLIENT.prenom||'')+' !','success'); startApp(); }
-  jbGet(MSG_BIN).then(function(data){
-    if(!data||typeof data!=='object') data={};
-    if(!data.messages) data.messages={}; var k=eKey(CLIENT.email);
-    if(!data.messages[k]) data.messages[k]={prenom:CLIENT.prenom,nom:CLIENT.nom,email:CLIENT.email,msgs:[],docs:[]};
-    data.messages[k].pwd=hash; data.messages[k].email=CLIENT.email;
-    return jbPut(MSG_BIN,data);
-  }).then(done).catch(done);
+  _api('setPassword', {password: pwd1}, true).then(done).catch(done);
 }
 
 
@@ -636,6 +637,7 @@ function goPage(pg, btn){ if(pg==='reportings'){ _pendingDocTab='reportings'; pg
 // START APP
 // ═══════════════════════════════════════════════════════
 function startApp(){
+  try{ if(_sessTok) sessionStorage.setItem('caremma_tok', _sessTok); }catch(e){}
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
   var ini = ((CLIENT.prenom||'')[0]||'') + ((CLIENT.nom||'')[0]||'');
@@ -1287,8 +1289,9 @@ function pollMsgs(){
     if(sess){
       var parsed = JSON.parse(sess);
       // Valider que la session est bien formée
-      if(parsed && parsed.email && parsed.prenom && parsed.nom){
+      if(parsed && parsed.email && parsed.prenom && parsed.nom && sessionStorage.getItem('caremma_tok')){
         CLIENT = parsed;
+        _sessTok = sessionStorage.getItem('caremma_tok')||'';
         startApp();
         return;
       } else {
@@ -1898,14 +1901,14 @@ async function portalSignConfirm(){
     if(!data.messages[k]) data.messages[k]={prenom:CLIENT.prenom,nom:CLIENT.nom,email:CLIENT.email,msgs:[],docs:[]};
     var en=data.messages[k]; if(!en.docs) en.docs=[];
     en.docs=en.docs.filter(function(x){ return x.id!==d.id && !(x.id && (''+x.id).indexOf('signed_'+(d.type||'')+'_')===0); });
-    en.docs.unshift({ id:'signed_'+(d.type||'doc')+'_'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', fromClient:true, signed:true, signedAt:label, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko', data:b64 });
+    en.docs.unshift({ id:'signed_'+(d.type||'doc')+'_'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', fromClient:true, signed:true, signedAt:label, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko' });
     if(!en.msgs) en.msgs=[];
     en.msgs.push({ from:'client', text:(d.nom||'Document')+' sign\u00e9 le '+label, date:label, ts:Date.now() });
     en.signStatus=en.signStatus||{}; if(d.type) en.signStatus[d.type]={label:label,signedAt:iso};
     await jbPut(MSG_BIN, data); crmOk=true;
   }catch(err){ crmOk=false; }
   try{ CLIENT.docs=(CLIENT.docs||[]).filter(function(x){return x.id!==d.id;});
-       CLIENT.docs.unshift({ id:'signed_'+(d.type||'doc')+'_l'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', signed:true, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko', data:b64 }); }catch(_){}
+       CLIENT.docs.unshift({ id:'signed_'+(d.type||'doc')+'_l'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', signed:true, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko' }); }catch(_){}
   portalSignClose();
   if(crmOk||emailSent){ if(typeof toast==='function') toast('Document sign\u00e9 et transmis \u2713','success'); }
   else { if(typeof toast==='function') toast('Sign\u00e9, mais transmission auto \u00e9chou\u00e9e (r\u00e9seau).','error'); }
@@ -1958,7 +1961,7 @@ async function sigSubmit(type){
     en.parcoursStatus=(en.signStatus.obj&&en.signStatus.conn)?'signed':'partial';
     if(!en.docs) en.docs=[];
     en.docs=en.docs.filter(function(d){ return !(d.id && (''+d.id).indexOf('sig_'+type+'_')===0); });
-    en.docs.unshift({ id:'sig_'+type+'_'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', fromClient:true, signed:true, signedAt:label, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko', data:b64 });
+    en.docs.unshift({ id:'sig_'+type+'_'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', fromClient:true, signed:true, signedAt:label, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko' });
     if(!en.msgs) en.msgs=[];
     en.msgs.push({ from:'client', text:titre+' le '+label, date:label, ts:Date.now() });
     await jbPut(MSG_BIN, data);
