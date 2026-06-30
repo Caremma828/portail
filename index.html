@@ -234,14 +234,17 @@ body{font-family:'DM Sans',sans-serif;font-weight:400;background:var(--navy);col
       <div class="login-desc">Accédez à votre espace pour consulter votre dossier, vos documents et contacter votre conseiller.</div>
       <label class="login-lbl">Adresse email</label>
       <input class="login-inp" id="li-email" type="email" placeholder="votre@email.fr" autocomplete="email">
-      <div id="li-step2" style="display:none">
-        <label class="login-lbl" id="li-pass-lbl">Mot de passe <a id="li-edit" href="javascript:void(0)" onclick="loginEditEmail()" style="display:none;float:right;font-weight:400;font-size:11px;color:var(--gold2);text-decoration:none;opacity:.8">← modifier l'email</a></label>
+      <div id="li-pwd-wrap">
+        <label class="login-lbl">Mot de passe</label>
         <input class="login-inp" id="li-pass" type="password" placeholder="Votre mot de passe" autocomplete="current-password">
       </div>
-      <button class="login-btn" id="li-continue-btn" onclick="loginContinue()">Continuer →</button>
-      <button class="login-btn" id="li-go-btn" style="display:none" onclick="doLogin()">Se connecter →</button>
-      <div class="login-err" id="li-err">Email ou code incorrect.</div>
-      <div id="li-hint" style="display:none;margin-top:.6rem;font-size:11px;color:rgba(255,255,255,.45);text-align:center;line-height:1.6"></div>
+      <div id="li-code-wrap" style="display:none">
+        <label class="login-lbl">Code d'accès (reçu par email)</label>
+        <input class="login-inp" id="li-code" type="password" placeholder="••••••" inputmode="numeric" autocomplete="one-time-code">
+      </div>
+      <button class="login-btn" id="li-btn" onclick="loginSubmit()">Se connecter →</button>
+      <div class="login-err" id="li-err">Email ou mot de passe incorrect.</div>
+      <div id="li-hint" style="margin-top:.9rem;font-size:11px;color:rgba(255,255,255,.4);text-align:center;line-height:1.7">Première connexion ? Utilisez le lien reçu dans votre email d'invitation.</div>
       <div style="margin-top:1.4rem;padding-top:1.1rem;border-top:1px solid rgba(201,168,76,.12);font-size:11px;color:rgba(255,255,255,.3);text-align:center;line-height:1.8">
         Accès réservé aux clients Caremma Finance.<br>
         <a href="mailto:marc.reverseau@caremmafinance.com" style="color:var(--gold2);text-decoration:none;opacity:.8">Contactez votre conseiller</a> pour obtenir vos accès.
@@ -480,74 +483,70 @@ function showUploadProgress(zoneId, pct, msg){
 // ═══════════════════════════════════════════════════════
 
 function _pwHash(s){ s=String(s||''); var h=5381, t=s+'caremmaCF#salt7'; for(var i=0;i<t.length;i++){ h=((h<<5)+h+t.charCodeAt(i))>>>0; } return 'h'+h.toString(16); }
-var _liState={email:'',client:null,hasPwd:false,code:'',pwd:''};
-function loginContinue(){
+var _inviteEmail=null, _liClient=null;
+function initPortalAuth(){
+  var inv=null;
+  try{ var qs=new URLSearchParams(location.search||''); inv=qs.get('invite')||qs.get('code'); }catch(e){}
+  if(!inv && location.hash && location.hash.indexOf('invite=')>=0){ try{ inv=decodeURIComponent(location.hash.split('invite=')[1].split('&')[0]); }catch(e){} }
+  if(!inv) return;
+  _inviteEmail=String(inv).trim().toLowerCase();
+  var em=document.getElementById('li-email'); if(em){ em.value=_inviteEmail; em.setAttribute('readonly','readonly'); em.style.opacity='.7'; }
+  var pw=document.getElementById('li-pwd-wrap'); if(pw) pw.style.display='none';
+  var cw=document.getElementById('li-code-wrap'); if(cw) cw.style.display='block';
+  var btn=document.getElementById('li-btn'); if(btn) btn.textContent='Valider le code →';
+  var h=document.getElementById('li-hint'); if(h) h.textContent='Première connexion : saisissez le code reçu par email, puis choisissez votre mot de passe.';
+  var t=document.querySelector('.login-title'); if(t) t.textContent='Première connexion';
+  var d=document.querySelector('.login-desc'); if(d) d.textContent='Saisissez le code d\'accès reçu par email pour activer votre espace.';
+  setTimeout(function(){ var c=document.getElementById('li-code'); if(c) c.focus(); },80);
+}
+function loginSubmit(){ if(_inviteEmail) return validateInviteCode(); return doLogin(); }
+function doLogin(){
   var email=(document.getElementById('li-email').value||'').trim().toLowerCase();
-  var errEl=document.getElementById('li-err'); errEl.style.display='none';
-  if(!/.+@.+\..+/.test(email)){ errEl.textContent='Adresse email invalide.'; errEl.style.display='block'; return; }
-  _liState.email=email;
-  var btn=document.getElementById('li-continue-btn'); btn.textContent='Vérification...';
+  var pass=(document.getElementById('li-pass').value||'').trim();
+  var err=document.getElementById('li-err'); err.style.display='none';
+  if(!/.+@.+\..+/.test(email)){ err.textContent='Adresse email invalide.'; err.style.display='block'; return; }
+  if(!pass){ err.textContent='Saisissez votre mot de passe.'; err.style.display='block'; return; }
+  var btn=document.getElementById('li-btn'); btn.textContent='Connexion...';
   var localAuth=localStorage.getItem('caremma_auth_'+eKey(email));
-  if(localAuth){ _liState.hasPwd=true; btn.textContent='Continuer →'; _loginShowStep('pwd'); return; }
-  Promise.all([jbGet(CLIENTS_BIN).catch(function(){return{};}), jbGet(MSG_BIN).catch(function(){return{};})]).then(function(arr){
-    btn.textContent='Continuer →';
-    var clients=(arr[0]&&arr[0].clients)||[];
-    var client=clients.find(function(c){ return (c.email||'').toLowerCase()===email; });
-    if(!client && typeof KNOWN_CLIENTS!=='undefined'){ client=KNOWN_CLIENTS.find(function(c){ return (c.email||'').toLowerCase()===email; }); }
-    if(!client){ errEl.textContent='Aucun espace n\'est associé à cet email. Contactez votre conseiller.'; errEl.style.display='block'; return; }
-    _liState.client=client; _liState.code=''+client.code;
-    var en=(arr[1]&&arr[1].messages&&arr[1].messages[eKey(email)])||{};
-    _liState.hasPwd=!!en.pwd; _liState.pwd=en.pwd||'';
-    _loginShowStep(_liState.hasPwd?'pwd':'code');
+  if(localAuth){ try{ var a=JSON.parse(localAuth); if((a.pwdHash&&a.pwdHash===_pwHash(pass))||(a.password&&a.password===pass)){ _doLoginSuccess(email,a); return; } }catch(e){} }
+  Promise.all([jbGet(MSG_BIN).catch(function(){return{};}), jbGet(CLIENTS_BIN).catch(function(){return{};})]).then(function(arr){
+    btn.textContent='Se connecter →';
+    var en=(arr[0]&&arr[0].messages&&arr[0].messages[eKey(email)])||{};
+    var clients=(arr[1]&&arr[1].clients)||[];
+    var client=clients.find(function(c){return (c.email||'').toLowerCase()===email;});
+    if(!client && typeof KNOWN_CLIENTS!=='undefined'){ client=KNOWN_CLIENTS.find(function(c){return (c.email||'').toLowerCase()===email;}); }
+    _liClient=client||null;
+    if(en.pwd){ if(_pwHash(pass)===en.pwd){ _doLoginSuccess(email,null); return; } err.textContent='Mot de passe incorrect.'; err.style.display='block'; return; }
+    if(client){ err.innerHTML='Aucun mot de passe n\'est encore défini pour ce compte.<br>Cliquez sur le lien reçu dans votre email d\'invitation pour votre première connexion.'; err.style.display='block'; }
+    else { err.textContent='Email ou mot de passe incorrect.'; err.style.display='block'; }
   });
 }
-function _loginShowStep(kind){
-  document.getElementById('li-step2').style.display='block';
-  document.getElementById('li-continue-btn').style.display='none';
-  document.getElementById('li-go-btn').style.display='block';
-  var em=document.getElementById('li-email'); em.setAttribute('readonly','readonly'); em.style.opacity='.7';
-  var edit=document.getElementById('li-edit'); if(edit) edit.style.display='inline';
-  var lbl=document.getElementById('li-pass-lbl'), inp=document.getElementById('li-pass'), hint=document.getElementById('li-hint'), go=document.getElementById('li-go-btn');
-  if(kind==='code'){ lbl.textContent='Code d\'accès (reçu par email)'; inp.placeholder='••••••'; inp.value=''; go.textContent='Valider le code →'; hint.style.display='block'; hint.textContent='Première connexion : saisissez le code reçu par email, vous choisirez ensuite votre mot de passe.'; }
-  else { lbl.textContent='Mot de passe'; inp.placeholder='Votre mot de passe'; inp.value=''; go.textContent='Se connecter →'; hint.style.display='none'; }
-  setTimeout(function(){ try{inp.focus();}catch(e){} },60);
-}
-function loginEditEmail(){
-  document.getElementById('li-step2').style.display='none';
-  document.getElementById('li-go-btn').style.display='none';
-  document.getElementById('li-continue-btn').style.display='block';
-  var em=document.getElementById('li-email'); em.removeAttribute('readonly'); em.style.opacity='1';
-  var edit=document.getElementById('li-edit'); if(edit) edit.style.display='none';
-  document.getElementById('li-err').style.display='none';
-  var h=document.getElementById('li-hint'); if(h) h.style.display='none';
-}
-function doLogin(){
-  var email=_liState.email||(document.getElementById('li-email').value||'').trim().toLowerCase();
-  var pass=(document.getElementById('li-pass').value||'').trim();
-  var errEl=document.getElementById('li-err'); errEl.style.display='none';
-  if(!pass){ errEl.textContent='Saisissez votre '+(_liState.hasPwd?'mot de passe':'code d\'accès')+'.'; errEl.style.display='block'; return; }
-  if(_liState.hasPwd){
-    var localAuth=localStorage.getItem('caremma_auth_'+eKey(email));
-    if(localAuth){ try{ var auth=JSON.parse(localAuth); if((auth.pwdHash&&auth.pwdHash===_pwHash(pass))||(auth.password&&auth.password===pass)){ _doLoginSuccess(email, auth); return; } }catch(e){} }
-    if(_liState.pwd && _pwHash(pass)===_liState.pwd){ _doLoginSuccess(email, null); return; }
-    errEl.textContent='Mot de passe incorrect.'; errEl.style.display='block'; return;
-  }
-  // première connexion → valider le code
-  if(_liState.code && (''+_liState.code)===(''+pass)){
-    CLIENT={ email:email, prenom:(_liState.client&&_liState.client.prenom)||'', nom:(_liState.client&&_liState.client.nom)||'', docs:[],msgs:[],parcoursData:{} };
+function validateInviteCode(){
+  var email=_inviteEmail||(document.getElementById('li-email').value||'').trim().toLowerCase();
+  var code=(document.getElementById('li-code').value||'').trim();
+  var err=document.getElementById('li-err'); err.style.display='none';
+  if(!code){ err.textContent='Saisissez le code reçu par email.'; err.style.display='block'; return; }
+  var btn=document.getElementById('li-btn'); btn.textContent='Vérification...';
+  jbGet(CLIENTS_BIN).then(function(data){
+    btn.textContent='Valider le code →';
+    var clients=(data&&data.clients)||[];
+    var client=clients.find(function(c){return (c.email||'').toLowerCase()===email;});
+    if(!client && typeof KNOWN_CLIENTS!=='undefined'){ client=KNOWN_CLIENTS.find(function(c){return (c.email||'').toLowerCase()===email;}); }
+    if(!client){ err.textContent='Aucun espace n\'est associé à cet email. Contactez votre conseiller.'; err.style.display='block'; return; }
+    if((''+client.code)!==(''+code)){ err.textContent='Code incorrect. Vérifiez l\'email reçu de Caremma Finance.'; err.style.display='block'; return; }
+    _liClient=client;
+    CLIENT={ email:email, prenom:client.prenom||'', nom:client.nom||'', docs:[],msgs:[],parcoursData:{} };
     var _ck='caremma_code_'+eKey(email), _prev=localStorage.getItem(_ck);
-    if(_prev!==(''+_liState.code)){ localStorage.removeItem('caremma_c_'+eKey(email)); localStorage.removeItem('caremma_auth_'+eKey(email)); localStorage.setItem(_ck, ''+_liState.code); }
+    if(_prev!==(''+client.code)){ localStorage.removeItem('caremma_c_'+eKey(email)); localStorage.removeItem('caremma_auth_'+eKey(email)); localStorage.setItem(_ck, ''+client.code); }
     else { var saved=localStorage.getItem('caremma_c_'+eKey(email)); if(saved){ try{ CLIENT=Object.assign(CLIENT,JSON.parse(saved)); }catch(e){} } }
     document.getElementById('login-screen').style.display='none';
     document.getElementById('set-pwd-screen').style.display='flex';
-    return;
-  }
-  errEl.textContent='Code d\'accès incorrect. Vérifiez l\'email reçu de Caremma Finance.'; errEl.style.display='block';
+  }).catch(function(){ var e2=document.getElementById('li-err'); e2.textContent='Connexion impossible, réessayez.'; e2.style.display='block'; });
 }
 function _doLoginSuccess(email, auth){
   CLIENT=Object.assign({email:email,prenom:'',nom:'',docs:[],msgs:[],parcoursData:{}}, (auth&&auth.clientData)||{});
   if(auth){ CLIENT.prenom=auth.prenom||CLIENT.prenom; CLIENT.nom=auth.nom||CLIENT.nom; }
-  if(_liState.client){ CLIENT.prenom=CLIENT.prenom||_liState.client.prenom||''; CLIENT.nom=CLIENT.nom||_liState.client.nom||''; }
+  if(_liClient){ CLIENT.prenom=CLIENT.prenom||_liClient.prenom||''; CLIENT.nom=CLIENT.nom||_liClient.nom||''; }
   var saved=localStorage.getItem('caremma_c_'+eKey(email)); if(saved){ try{ CLIENT=Object.assign(CLIENT,JSON.parse(saved)); }catch(e){} }
   sessionStorage.setItem('caremma_sess', JSON.stringify(CLIENT));
   startApp();
@@ -566,6 +565,8 @@ function setPassword(){
     data.messages[k].pwd=hash; data.messages[k].email=CLIENT.email;
     return jbPut(MSG_BIN,data);
   }).catch(function(){});
+  try{ if(history.replaceState) history.replaceState(null,'',location.pathname); }catch(e){}
+  _inviteEmail=null;
   sessionStorage.setItem('caremma_sess', JSON.stringify(CLIENT));
   document.getElementById('set-pwd-screen').style.display='none';
   toast('Mot de passe créé ✓ Bienvenue '+(CLIENT.prenom||'')+' !','success');
@@ -1260,14 +1261,16 @@ function pollMsgs(){
   }
   // Page de connexion
   var ei = document.getElementById('li-email');
+  var pi = document.getElementById('li-pass');
   var ci = document.getElementById('li-code');
-  if(ei) ei.addEventListener('keydown',function(e){ if(e.key==='Enter'){ var c=document.getElementById('li-code'); if(c) c.focus(); }});
-  if(ci) ci.addEventListener('keydown',function(e){ if(e.key==='Enter') doLogin(); });
-  // S'assurer que la page login est visible
+  if(ei) ei.addEventListener('keydown',function(e){ if(e.key==='Enter') loginSubmit(); });
+  if(pi) pi.addEventListener('keydown',function(e){ if(e.key==='Enter') loginSubmit(); });
+  if(ci) ci.addEventListener('keydown',function(e){ if(e.key==='Enter') loginSubmit(); });
   var ls = document.getElementById('login-screen');
   var app = document.getElementById('app');
   if(ls) ls.style.display='flex';
   if(app) app.style.display='none';
+  initPortalAuth();
 })();
 
 // ── Fonctions du parcours client (appelées par le HTML injecté) ──
