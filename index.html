@@ -1922,12 +1922,19 @@ async function _pdfPushChunks(dataUri, docId){
     var CH=90000, n=Math.ceil(b64.length/CH), ids=[];
     for(var i=0;i<n;i++){
       var part=b64.slice(i*CH,(i+1)*CH);
-      var res=await fetch('https://api.jsonbin.io/v3/b',{method:'POST',
-        headers:{'Content-Type':'application/json','X-Master-Key':JBKEY,'X-Bin-Private':'true'},
-        body:JSON.stringify({c:part,i:i,n:n,doc:docId})});
-      if(!res.ok) return null;
-      var j=await res.json(); var id=j&&j.metadata&&j.metadata.id; if(!id) return null;
+      var id=null;
+      for(var att=0; att<5; att++){
+        try{
+          var res=await fetch('https://api.jsonbin.io/v3/b',{method:'POST',
+            headers:{'Content-Type':'application/json','X-Master-Key':JBKEY,'X-Bin-Private':'true'},
+            body:JSON.stringify({c:part,i:i,n:n,doc:docId})});
+          if(res.ok){ var j=await res.json(); id=(j&&j.metadata&&j.metadata.id)||null; if(id) break; }
+        }catch(_e){}
+        await new Promise(function(r){ setTimeout(r, 700*(att+1)); });
+      }
+      if(!id) return null;
       ids.push(id);
+      if(i < n-1){ await new Promise(function(r){ setTimeout(r, 650); }); }
     }
     return {ids:ids, n:n};
   }catch(e){ return null; }
