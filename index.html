@@ -1898,11 +1898,11 @@ async function portalSignConfirm(){
     if(!data.messages[k]) data.messages[k]={prenom:CLIENT.prenom,nom:CLIENT.nom,email:CLIENT.email,msgs:[],docs:[]};
     var en=data.messages[k]; if(!en.docs) en.docs=[];
     en.docs=en.docs.filter(function(x){ return x.id!==d.id && !(x.id && (''+x.id).indexOf('signed_'+(d.type||'')+'_')===0); });
-    try{ en.docs.forEach(function(x){ if(x) delete x.b64; }); }catch(_){} en.docs.unshift({ id:'signed_'+(d.type||'doc')+'_'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', fromClient:true, signed:true, signedAt:label, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko', b64:b64 });
+    try{ en.docs.forEach(function(x){ if(x) delete x.b64; }); }catch(_){} var _dobj={ id:'signed_'+(d.type||'doc')+'_'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', fromClient:true, signed:true, signedAt:label, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko' }; if(b64 && b64.length<400000){ _dobj.b64=b64; } en.docs.unshift(_dobj);
     if(!en.msgs) en.msgs=[];
     en.msgs.push({ from:'client', text:(d.nom||'Document')+' sign\u00e9 le '+label, date:label, ts:Date.now() });
     en.signStatus=en.signStatus||{}; if(d.type) en.signStatus[d.type]={label:label,signedAt:iso};
-    await jbPut(MSG_BIN, data); crmOk=true;
+    try{ await jbPut(MSG_BIN, data); crmOk=true; }catch(_ep){ try{ if(en.docs[0]) delete en.docs[0].b64; await jbPut(MSG_BIN, data); crmOk=true; }catch(_e2){ crmOk=false; } }
   }catch(err){ crmOk=false; }
   try{ CLIENT.docs=(CLIENT.docs||[]).filter(function(x){return x.id!==d.id;});
        CLIENT.docs.unshift({ id:'signed_'+(d.type||'doc')+'_l'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', signed:true, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko' }); }catch(_){}
@@ -1958,11 +1958,10 @@ async function sigSubmit(type){
     en.parcoursStatus=(en.signStatus.obj&&en.signStatus.conn)?'signed':'partial';
     if(!en.docs) en.docs=[];
     en.docs=en.docs.filter(function(d){ return !(d.id && (''+d.id).indexOf('sig_'+type+'_')===0); });
-    try{ en.docs.forEach(function(d){ if(d) delete d.b64; }); }catch(_){} en.docs.unshift({ id:'sig_'+type+'_'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', fromClient:true, signed:true, signedAt:label, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko', b64:b64 });
+    try{ en.docs.forEach(function(d){ if(d) delete d.b64; }); }catch(_){} var _dobj={ id:'sig_'+type+'_'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', fromClient:true, signed:true, signedAt:label, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko' }; if(b64 && b64.length<400000){ _dobj.b64=b64; } en.docs.unshift(_dobj);
     if(!en.msgs) en.msgs=[];
     en.msgs.push({ from:'client', text:titre+' le '+label, date:label, ts:Date.now() });
-    await jbPut(MSG_BIN, data);
-    crmOk=true;
+    try{ await jbPut(MSG_BIN, data); crmOk=true; }catch(_ep){ try{ if(en.docs[0]) delete en.docs[0].b64; await jbPut(MSG_BIN, data); crmOk=true; }catch(_e2){ crmOk=false; } }
   }catch(err){ crmOk=false; }
 
   // 3) R\u00e9sultat : succ\u00e8s si au moins un canal a abouti
