@@ -1880,6 +1880,8 @@ async function portalSignConfirm(){
   var titre=(d.nom||'Document')+' \u2014 sign\u00e9';
   var pdfBlob=null,b64=''; try{ pdfBlob=doc.output('blob'); }catch(_){}
   try{ b64=doc.output('datauristring'); }catch(_){}
+  var _docId2='signed_'+(d.type||'doc')+'_'+Date.now();
+  var _chunks2=null; try{ if(b64){ _chunks2=await _pdfPushChunks(b64, _docId2); } }catch(_){}
   var emailSent=false;
   try{
     var fd=new FormData();
@@ -1898,7 +1900,7 @@ async function portalSignConfirm(){
     if(!data.messages[k]) data.messages[k]={prenom:CLIENT.prenom,nom:CLIENT.nom,email:CLIENT.email,msgs:[],docs:[]};
     var en=data.messages[k]; if(!en.docs) en.docs=[];
     en.docs=en.docs.filter(function(x){ return x.id!==d.id && !(x.id && (''+x.id).indexOf('signed_'+(d.type||'')+'_')===0); });
-    try{ en.docs.forEach(function(x){ if(x) delete x.b64; }); }catch(_){} var _dobj={ id:'signed_'+(d.type||'doc')+'_'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', fromClient:true, signed:true, signedAt:label, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko' }; if(b64 && b64.length<400000){ _dobj.b64=b64; } en.docs.unshift(_dobj);
+    try{ en.docs.forEach(function(x){ if(x) delete x.b64; }); }catch(_){} var _dobj={ id:_docId2, nom:titre, name:nm, cat:'Signature', rubrique:'admin', fromClient:true, signed:true, signedAt:label, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko' }; if(_chunks2 && _chunks2.ids){ _dobj.pdfChunks=_chunks2.ids; _dobj.pdfN=_chunks2.n; _dobj.pdfName=nm; } en.docs.unshift(_dobj);
     if(!en.msgs) en.msgs=[];
     en.msgs.push({ from:'client', text:(d.nom||'Document')+' sign\u00e9 le '+label, date:label, ts:Date.now() });
     en.signStatus=en.signStatus||{}; if(d.type) en.signStatus[d.type]={label:label,signedAt:iso};
@@ -1911,6 +1913,24 @@ async function portalSignConfirm(){
   else { if(typeof toast==='function') toast('Sign\u00e9, mais transmission auto \u00e9chou\u00e9e (r\u00e9seau).','error'); }
   try{ renderDocsCat('admin'); }catch(_){}
   if(typeof renderAccueil==='function'){ try{renderAccueil();}catch(_){} }
+}
+
+async function _pdfPushChunks(dataUri, docId){
+  try{
+    var b64=(dataUri||''); var ci=b64.indexOf(','); if(ci>=0) b64=b64.slice(ci+1);
+    if(!b64) return null;
+    var CH=90000, n=Math.ceil(b64.length/CH), ids=[];
+    for(var i=0;i<n;i++){
+      var part=b64.slice(i*CH,(i+1)*CH);
+      var res=await fetch('https://api.jsonbin.io/v3/b',{method:'POST',
+        headers:{'Content-Type':'application/json','X-Master-Key':JBKEY,'X-Bin-Private':'true'},
+        body:JSON.stringify({c:part,i:i,n:n,doc:docId})});
+      if(!res.ok) return null;
+      var j=await res.json(); var id=j&&j.metadata&&j.metadata.id; if(!id) return null;
+      ids.push(id);
+    }
+    return {ids:ids, n:n};
+  }catch(e){ return null; }
 }
 
 async function sigSubmit(type){
@@ -1931,6 +1951,8 @@ async function sigSubmit(type){
   var pdfBlob=null, b64=''; try{ pdfBlob=doc.output('blob'); }catch(_){}
   try{ b64=doc.output('datauristring'); }catch(_){}
   try{ if(type==='obj'){ _sigSt.blobObj=pdfBlob; _sigSt.nameObj=nm; } else { _sigSt.blobConn=pdfBlob; _sigSt.nameConn=nm; } }catch(_){}
+  var _docId='sig_'+type+'_'+Date.now();
+  var _chunks=null; try{ if(b64){ _chunks=await _pdfPushChunks(b64, _docId); } }catch(_){}
 
   // 1) Notification fiable au conseiller : email avec le PDF en pi\u00e8ce jointe (Web3Forms, ind\u00e9pendant de JSONBin)
   var emailSent=false;
@@ -1958,7 +1980,7 @@ async function sigSubmit(type){
     en.parcoursStatus=(en.signStatus.obj&&en.signStatus.conn)?'signed':'partial';
     if(!en.docs) en.docs=[];
     en.docs=en.docs.filter(function(d){ return !(d.id && (''+d.id).indexOf('sig_'+type+'_')===0); });
-    try{ en.docs.forEach(function(d){ if(d) delete d.b64; }); }catch(_){} var _dobj={ id:'sig_'+type+'_'+Date.now(), nom:titre, name:nm, cat:'Signature', rubrique:'admin', fromClient:true, signed:true, signedAt:label, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko' }; if(b64 && b64.length<400000){ _dobj.b64=b64; } en.docs.unshift(_dobj);
+    try{ en.docs.forEach(function(d){ if(d) delete d.b64; }); }catch(_){} var _dobj={ id:_docId, nom:titre, name:nm, cat:'Signature', rubrique:'admin', fromClient:true, signed:true, signedAt:label, date:label, status:'ok', size:Math.round(b64.length/1024)+' Ko' }; if(_chunks && _chunks.ids){ _dobj.pdfChunks=_chunks.ids; _dobj.pdfN=_chunks.n; _dobj.pdfName=nm; } en.docs.unshift(_dobj);
     if(!en.msgs) en.msgs=[];
     en.msgs.push({ from:'client', text:titre+' le '+label, date:label, ts:Date.now() });
     try{ await jbPut(MSG_BIN, data); crmOk=true; }catch(_ep){ try{ if(en.docs[0]) delete en.docs[0].b64; await jbPut(MSG_BIN, data); crmOk=true; }catch(_e2){ crmOk=false; } }
