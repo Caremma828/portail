@@ -522,8 +522,6 @@ function loginContinue(){
   var err=document.getElementById('li-err'); err.style.display='none';
   if(!/.+@.+\..+/.test(email)){ err.textContent='Adresse email invalide.'; err.style.display='block'; return; }
   var btn=document.getElementById('li-btn'); btn.textContent='Vérification...';
-  var localAuth=localStorage.getItem('caremma_auth_'+eKey(email));
-  if(localAuth){ btn.textContent='Continuer →'; _setMode('password', email); return; }
   Promise.all([jbGet(CLIENTS_BIN).catch(function(){return{};}), jbGet(MSG_BIN).catch(function(){return{};})]).then(function(arr){
     btn.textContent='Continuer →';
     var clients=(arr[0]&&arr[0].clients)||[];
@@ -533,7 +531,7 @@ function loginContinue(){
     _liClient=client;
     var en=(arr[1]&&arr[1].messages&&arr[1].messages[eKey(email)])||{};
     if(en.pwd){ _liServerPwd=en.pwd; _setMode('password', email); }
-    else { _setMode('code', email); }
+    else { try{ localStorage.removeItem('caremma_auth_'+eKey(email)); }catch(_e){} _setMode('code', email); }
   }).catch(function(){ document.getElementById('li-btn').textContent='Continuer →'; var e=document.getElementById('li-err'); e.textContent='Connexion impossible, réessayez dans un instant.'; e.style.display='block'; });
 }
 function doLogin(){
@@ -580,7 +578,7 @@ function initPortalAuth(){
   var inv=null;
   try{ var qs=new URLSearchParams(location.search||''); inv=qs.get('invite')||qs.get('code'); }catch(e){}
   if(!inv && location.hash && location.hash.indexOf('invite=')>=0){ try{ inv=decodeURIComponent(location.hash.split('invite=')[1].split('&')[0]); }catch(e){} }
-  if(inv){ _setMode('code', String(inv).trim().toLowerCase()); } else { _setMode('email'); }
+  if(inv){ var _iem=String(inv).trim().toLowerCase(); try{ localStorage.removeItem('caremma_auth_'+eKey(_iem)); localStorage.removeItem('caremma_sess'); }catch(_e){} _setMode('code', _iem); } else { _setMode('email'); }
 }
 function setPassword(){
   var pwd1=document.getElementById('sp-pwd1').value, pwd2=document.getElementById('sp-pwd2').value;
