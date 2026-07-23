@@ -958,7 +958,7 @@ function doLogin(){
     try{
       var a=JSON.parse(stored);
       if(a.password===code){
-        CLIENT=Object.assign({email:email,prenom:a.prenom||'',nom:a.nom||'',docs:[],msgs:[],parcoursData:{},rapports:[],rapportsVus:[]},a.clientData||{});
+        CLIENT=Object.assign({email:email,prenom:a.prenom||'',nom:a.nom||'',docs:[],msgs:[],parcoursData:{},rapports:[],rapportsVus:[],notes:[]},a.clientData||{});
         var saved=localStorage.getItem('caremma_c_'+eKey(email));
         if(saved)try{CLIENT=Object.assign(CLIENT,JSON.parse(saved));}catch(e){}
         btn.textContent='Accéder à mon espace →';btn.disabled=false;
@@ -975,7 +975,7 @@ function doLogin(){
       errEl.style.display='block';errEl.textContent='Email ou code incorrect.';
       btn.textContent='Accéder à mon espace →';btn.disabled=false;return;
     }
-    CLIENT={email:match.email,prenom:match.prenom||'',nom:match.nom||'',docs:[],msgs:[],parcoursData:{},rapports:[],rapportsVus:[]};
+    CLIENT={email:match.email,prenom:match.prenom||'',nom:match.nom||'',docs:[],msgs:[],parcoursData:{},rapports:[],rapportsVus:[],notes:[]};
     var saved=localStorage.getItem('caremma_c_'+eKey(email));
     if(saved)try{CLIENT=Object.assign(CLIENT,JSON.parse(saved));}catch(e){}
     btn.textContent='Accéder à mon espace →';btn.disabled=false;
@@ -1029,7 +1029,7 @@ function goPage(name,navEl){
   if(name==='objectifs')renderObjectifs();
   if(name==='connaissance')renderConnaissance();
   if(name==='documents')renderDocs();
-  if(name==='rapports')renderRapports();
+  if(name==='rapports'){renderRapports();renderNotes();}
   if(name==='messages'){
     syncMessages();renderMsgs();
     // Auto-refresh toutes les 20s sur la page messages
@@ -1105,8 +1105,24 @@ function renderKPIs(){
 function syncMessages(){
   jbGet(MSG_BIN).then(function(data){
     var k=eKey(CLIENT.email);
+
+    // ── Sync des notes globales publiées par le conseiller (champ "reportings",
+    //    diffusées à TOUS les clients — indépendant de l'entrée par client)
+    if(data.reportings&&data.reportings.length){
+      var remoteNotes=data.reportings;
+      var noteIds=new Set((CLIENT.notes||[]).map(function(n){return String(n.id||((n.titre||n.nom||'')+'|'+(n.dateAffichee||n.date||'')));}));
+      remoteNotes.forEach(function(n){
+        var nid=String(n.id||((n.titre||n.nom||'')+'|'+(n.dateAffichee||n.date||'')));
+        if(!noteIds.has(nid)){
+          if(!CLIENT.notes)CLIENT.notes=[];
+          CLIENT.notes.push(n);
+          noteIds.add(nid);
+        }
+      });
+    }
+
     var entry=data.messages&&data.messages[k];
-    if(!entry)return;
+    if(!entry){saveLocal();renderNotes();return;}
 
     // ── Sync messages (déduplication robuste par id ou texte+date)
     if(entry.msgs){
@@ -1163,6 +1179,7 @@ function syncMessages(){
     renderKPIs();
     renderDocs();
     renderRapports();
+    renderNotes();
 
     var unread=(CLIENT.msgs||[]).filter(function(m){return m.from!=='client'&&!m.read;}).length;
     var b=document.getElementById('msg-badge');
@@ -1355,6 +1372,39 @@ function openRapport(id){
     rb.textContent=n;rb.style.display=n?'inline':'none';
   }
 }
+// Notes globales publiées par le conseiller depuis le CRM (champ "reportings"
+// dans MSG_BIN) — diffusées à tous les clients, distinctes des rapports
+// personnalisés. Lecture défensive des noms de champs (le CRM peut évoluer).
+function renderNotes(){
+  var el=document.getElementById('notes-list');if(!el)return;
+  var notes=(CLIENT&&CLIENT.notes)||[];
+  if(!notes.length){el.innerHTML='';return;}
+
+  function toTime(n){
+    var d=n.datePublication||n.dateAffichee||n.date||'';
+    var p=String(d).split('/');
+    if(p.length===3)return new Date(p[2],p[1]-1,p[0]).getTime();
+    return 0;
+  }
+  var sorted=notes.slice().sort(function(a,b){return toTime(b)-toTime(a);});
+
+  el.innerHTML='<div class="rap-cat-h">📰 Notes de votre conseiller</div>'
+    +sorted.map(function(n){
+      var titre=n.titre||n.nom||n.title||'Note';
+      var dateAff=n.dateAffichee||n.date||'';
+      var contenu=n.contenu||n.texte||n.content||'';
+      var pdfUrl=n.pdfUrl||n.url||n.lien||n.pdf||'';
+      return '<div class="card" style="margin-bottom:12px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'
+          +'<div style="font-size:14px;font-weight:600;color:var(--text)">'+escH(titre)+'</div>'
+          +(dateAff?'<div style="font-size:11px;color:var(--text3);white-space:nowrap">'+escH(dateAff)+'</div>':'')
+        +'</div>'
+        +(contenu?'<div style="font-size:12.5px;color:var(--text2);margin-top:8px;line-height:1.6;white-space:pre-wrap">'+escH(contenu)+'</div>':'')
+        +(pdfUrl?'<div style="margin-top:10px"><button class="btn btn-primary btn-sm" onclick="window.open(\''+escH(pdfUrl)+'\',\'_blank\')">⬇ Consulter le PDF</button></div>':'')
+        +'</div>';
+    }).join('');
+}
+
 function renderRapports(){
   var list=document.getElementById('rapports-list');if(!list)return;
   var all=(CLIENT&&CLIENT.rapports)||[];
@@ -2770,6 +2820,7 @@ async function sendEmailJS(serviceId, templateId, params){
       <!-- RAPPORTS -->
       <div class="page" id="pg-rapports">
         <div class="ph"><div class="pt">Rapports de gestion</div><div class="ps">Consultez et téléchargez vos rapports de gestion, relevés et documents contractuels</div></div>
+        <div id="notes-list"></div>
         <div class="card" style="padding:16px 22px">
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
             <input id="rap-search" class="linput" placeholder="🔎 Rechercher un document..." style="max-width:280px;margin-bottom:0" oninput="renderRapports()">
