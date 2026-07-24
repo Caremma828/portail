@@ -1503,11 +1503,8 @@ function renderDocs(){
 }
 
 function openParcoursSnapshot(docId){
-  var doc=(CLIENT.docs||[]).find(function(d){return String(d.id)===String(docId);});
-  if(!doc||!doc.html){toast('Document introuvable','error');return;}
-  var blob=new Blob([doc.html],{type:'text/html'});
-  var url=URL.createObjectURL(blob);
-  window.open(url,'_blank');
+  goPage('parcours', document.getElementById('nav-parcours'));
+  toast('Ouverture de votre parcours…');
 }
 function openDocSig(docId){
   var doc=(CLIENT.docs||[]).find(function(d){return String(d.id)===String(docId);});
@@ -1519,8 +1516,8 @@ function openDocSig(docId){
 
   // Bouton "Voir le document" si c'est un doc questionnaire
   var previewBtn='';
-  if(doc.type==='parcours_complet' && doc.html){
-    previewBtn='<button onclick="openParcoursSnapshot(\''+escH(String(doc.id))+'\')" class="btn btn-outline btn-sm" style="font-size:11px">👁 Voir le document</button>';
+  if(doc.type==='parcours_complet'){
+    previewBtn='<button onclick="openParcoursSnapshot(\''+escH(String(doc.id))+'\')" class="btn btn-outline btn-sm" style="font-size:11px">👁 Voir / compléter le document</button>';
   } else if(doc.docType){
     var docKeyMap={objectifs:'objectifs',connaissance:'connaissance',entree:'objectifs',adequation:'connaissance'};
     var previewKey=docKeyMap[doc.docType]||doc.docType;
@@ -4173,13 +4170,6 @@ async function pc2SignAndSend(){
     toast('Parcours sign\u00e9 et envoy\u00e9 \u00e0 votre conseiller \u2713');
     if(typeof renderDocs==='function') renderDocs();
   }catch(e){ toast('Erreur : '+e.message,'error'); }
-}
-function buildPrintableHtml(){
-  // Snapshot HTML autonome (utilisé pour l'affichage côté portail client)
-  var clone = document.documentElement.cloneNode(true);
-  clone.querySelectorAll('.no-print, .toolbar, .tabbar').forEach(function(el){ el.remove(); });
-  clone.querySelectorAll('.tabpage').forEach(function(el){ el.style.display='block'; });
-  return '<!DOCTYPE html><html>'+clone.innerHTML+'</html>';
 }
 
 loadState();
