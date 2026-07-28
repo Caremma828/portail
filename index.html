@@ -2932,40 +2932,135 @@ function closeSig(){var z=document.getElementById('sig-zone');if(z)z.style.displ
 // Le CRM (bouton "⬇ PDF signé") s'attend à trouver doc.pdfChunks : un tableau d'ID de bins
 // JSONBin, chacun contenant un morceau du PDF encodé en base64 (limite ~100 Ko par bin).
 async function generateAndUploadSignedPdf(signedDoc, sigData, sigDate){
-  if(typeof jspdf==='undefined' || typeof html2canvas==='undefined'){
-    console.warn('jsPDF/html2canvas non chargés — PDF signé non généré automatiquement.');
+  if(typeof jspdf==='undefined'){
+    console.warn('jsPDF non chargé — PDF signé non généré automatiquement.');
     return;
   }
-  var container=null;
   try{
-    // 1) Reconstruire le contenu stylé Caremma (déjà généré par le CRM) + bandeau de signature
-    var baseHtml=signedDoc.html||'';
-    var bodyMatch=baseHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-    var innerContent=bodyMatch?bodyMatch[1]:baseHtml;
-    innerContent=innerContent.replace(/<button[^>]*print-btn[\s\S]*?<\/button>/gi,'');
+    // 1) Extraire le contenu structuré du document (déjà généré par le CRM) via parsing DOM —
+    // aucune capture d'écran, donc aucun risque de page blanche liée au rendu du navigateur.
+    var parser=new DOMParser();
+    var doc=parser.parseFromString(signedDoc.html||'', 'text/html');
+    var docTitleEl=doc.querySelector('.doc-title');
+    var docInfoEl=doc.querySelector('.doc-info');
+    var docTitle=docTitleEl?docTitleEl.textContent.trim():(signedDoc.nom||'Document');
+    var docInfo=docInfoEl?docInfoEl.textContent.replace(/\s+/g,' ').trim():'';
 
-    var sigBanner='<div style="border:1.5px solid #c9a84c;border-radius:8px;padding:14px 18px;margin-bottom:16px;background:#fdf9ee">'
-      +'<div style="font-size:11pt;font-weight:bold;color:#0f1e35;margin-bottom:8px">✅ Document signé électroniquement</div>'
-      +'<div style="font-size:9.5pt;color:#5a6a7a;margin-bottom:8px">Signé par '+escH(CLIENT.prenom+' '+CLIENT.nom)+' le '+escH(sigDate)+'</div>'
-      +'<img src="'+sigData+'" style="height:60px;max-width:260px;object-fit:contain;background:white;border:1px solid #ddd;border-radius:4px;padding:4px">'
-      +'</div>';
-
-    container=document.createElement('div');
-    container.style.cssText='position:fixed;left:0;top:0;width:800px;background:#fff;padding:24px;font-family:Georgia,serif;color:#1a1a2e;z-index:-9999;opacity:1';
-    container.innerHTML=sigBanner+innerContent;
-    document.body.appendChild(container);
-
-    // 2) Rendre en PDF (A4) via jsPDF + html2canvas
-    var pdf=new jspdf.jsPDF('p','pt','a4');
-    await new Promise(function(resolve){
-      pdf.html(container, {
-        callback:function(){ resolve(); },
-        x:20, y:20, width:555, windowWidth:800,
-        html2canvas:{scale:0.72, backgroundColor:'#ffffff', useCORS:true}
+    var sections=[];
+    doc.querySelectorAll('.sec').forEach(function(sec){
+      var titleEl=sec.querySelector('.sec-title');
+      var rows=[];
+      sec.querySelectorAll('.row').forEach(function(row){
+        var lbl=row.querySelector('.lbl'); var val=row.querySelector('.val');
+        var lblText=lbl?lbl.textContent.trim():'';
+        var valText=val?val.textContent.trim():'';
+        if(lblText||valText) rows.push({label:lblText, value:valText||'—'});
       });
+      // Repli : si aucune structure .row reconnue, prendre le texte brut de la section
+      if(!rows.length){
+        var raw=(sec.textContent||'').replace(/\s+/g,' ').trim();
+        if(titleEl) raw=raw.replace(titleEl.textContent.trim(),'').trim();
+        if(raw) rows.push({label:'', value:raw});
+      }
+      sections.push({title:titleEl?titleEl.textContent.trim():'', rows:rows});
     });
+    // Repli global : si aucune section .sec trouvée du tout, utiliser le texte brut du corps
+    if(!sections.length){
+      var bodyEl=doc.querySelector('.body')||doc.body;
+      var raw2=(bodyEl.textContent||'').replace(/\s+/g,' ').trim();
+      if(raw2) sections.push({title:'Contenu', rows:[{label:'', value:raw2}]});
+    }
+
+    // 2) Construire le PDF avec l'API de dessin natif de jsPDF (texte + formes vectorielles)
+    var NAVY=[15,30,53], GOLD=[201,168,76], TEXT=[26,26,46], MUTED=[90,106,122], CREAM=[253,249,238];
+    var pdf=new jspdf.jsPDF('p','pt','a4');
+    var pageW=595.28, pageH=841.89, marginX=40, marginTop=40, marginBottom=50;
+    var y=marginTop;
+
+    function drawHeader(){
+      pdf.setFillColor(NAVY[0],NAVY[1],NAVY[2]);
+      pdf.rect(0,0,pageW,54,'F');
+      pdf.setTextColor(GOLD[0],GOLD[1],GOLD[2]);
+      pdf.setFont('times','bold'); pdf.setFontSize(13);
+      pdf.text('CAREMMA FINANCE', marginX, 24);
+      pdf.setFont('times','normal'); pdf.setFontSize(7.5);
+      pdf.setTextColor(200,205,215);
+      pdf.text("Conseil en Investissement · ORIAS N°24007767 · Maisons-Laffitte", marginX, 36);
+      pdf.setFont('times','bold'); pdf.setFontSize(10.5); pdf.setTextColor(GOLD[0],GOLD[1],GOLD[2]);
+      pdf.text(docTitle, pageW-marginX, 24, {align:'right'});
+      pdf.setFont('times','normal'); pdf.setFontSize(7.5); pdf.setTextColor(200,205,215);
+      pdf.text(docInfo, pageW-marginX, 36, {align:'right'});
+      pdf.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
+      pdf.rect(0,54,pageW,2.5,'F');
+      y=54+2.5+16;
+    }
+    function drawFooter(pageNum,totalPages){
+      pdf.setFillColor(NAVY[0],NAVY[1],NAVY[2]);
+      pdf.rect(0,pageH-26,pageW,26,'F');
+      pdf.setFont('times','normal'); pdf.setFontSize(7);
+      pdf.setTextColor(180,188,198);
+      pdf.text('Document confidentiel · Caremma Finance', marginX, pageH-11);
+      pdf.text('Page '+pageNum+' / '+totalPages, pageW-marginX, pageH-11, {align:'right'});
+    }
+    function ensureSpace(neededHeight){
+      if(y+neededHeight > pageH-marginBottom){
+        pdf.addPage();
+        drawHeader();
+      }
+    }
+    function drawSectionTitle(title){
+      if(!title) return;
+      ensureSpace(24);
+      pdf.setFillColor(NAVY[0],NAVY[1],NAVY[2]);
+      pdf.rect(marginX, y, pageW-2*marginX, 18, 'F');
+      pdf.setFont('times','bold'); pdf.setFontSize(9); pdf.setTextColor(GOLD[0],GOLD[1],GOLD[2]);
+      pdf.text(title.toUpperCase(), marginX+8, y+12.5);
+      y+=18+8;
+    }
+    function drawRow(label, value){
+      var contentWidth=pageW-2*marginX-16;
+      var valueLines=pdf.setFont('times','bold').setFontSize(9.5).splitTextToSize(value||'—', contentWidth);
+      var lblHeight=label?11:0;
+      var valHeight=valueLines.length*11+4;
+      var rowHeight=lblHeight+valHeight+8;
+      ensureSpace(rowHeight);
+      var rowStartY=y;
+      if(label){
+        pdf.setFont('times','italic'); pdf.setFontSize(7.5); pdf.setTextColor(MUTED[0],MUTED[1],MUTED[2]);
+        pdf.text(label, marginX+8, y+8);
+        y+=lblHeight;
+      }
+      pdf.setFont('times','bold'); pdf.setFontSize(9.5); pdf.setTextColor(TEXT[0],TEXT[1],TEXT[2]);
+      pdf.text(valueLines, marginX+8, y+9);
+      y+=valHeight;
+      pdf.setDrawColor(230,230,230);
+      pdf.line(marginX, y+2, pageW-marginX, y+2);
+      y+=6;
+    }
+    function drawSignatureBanner(){
+      var bannerH=90;
+      ensureSpace(bannerH+10);
+      pdf.setDrawColor(GOLD[0],GOLD[1],GOLD[2]); pdf.setFillColor(CREAM[0],CREAM[1],CREAM[2]);
+      pdf.roundedRect(marginX, y, pageW-2*marginX, bannerH, 4, 4, 'FD');
+      pdf.setFont('times','bold'); pdf.setFontSize(11); pdf.setTextColor(NAVY[0],NAVY[1],NAVY[2]);
+      pdf.text('✅ Document signé électroniquement', marginX+12, y+20);
+      pdf.setFont('times','normal'); pdf.setFontSize(9); pdf.setTextColor(MUTED[0],MUTED[1],MUTED[2]);
+      pdf.text('Signé par '+(CLIENT.prenom+' '+CLIENT.nom)+' le '+sigDate, marginX+12, y+36);
+      try{ pdf.addImage(sigData,'PNG', marginX+12, y+44, 130, 38); }catch(_imgErr){}
+      y+=bannerH+14;
+    }
+
+    drawHeader();
+    drawSignatureBanner();
+    sections.forEach(function(sec){
+      drawSectionTitle(sec.title);
+      sec.rows.forEach(function(r){ drawRow(r.label, r.value); });
+    });
+
+    var totalPages=pdf.internal.getNumberOfPages();
+    for(var p=1;p<=totalPages;p++){ pdf.setPage(p); drawFooter(p,totalPages); }
+
     var b64=pdf.output('datauristring').split(',')[1];
-    document.body.removeChild(container); container=null;
     if(!b64) return;
 
     // 3) Découper en morceaux <90 Ko et créer un bin JSONBin par morceau
@@ -3000,7 +3095,6 @@ async function generateAndUploadSignedPdf(signedDoc, sigData, sigDate){
     }
   }catch(e){
     console.warn('Génération PDF signé :', e.message);
-    if(container && container.parentNode) document.body.removeChild(container);
   }
 }
 
@@ -3497,7 +3591,6 @@ async function sendEmailJS(serviceId, templateId, params){
 
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 </head>
 <body>
