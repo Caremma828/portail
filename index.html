@@ -2953,29 +2953,54 @@ async function generateAndUploadSignedPdf(signedDoc, sigData, sigDate){
     var docTitle=docTitleEl?docTitleEl.textContent.trim():(signedDoc.nom||'Document');
     var docInfo=docInfoEl?docInfoEl.textContent.replace(/\s+/g,' ').trim():'';
 
+    // Extraction récursive, indépendante de la structure exacte : certains documents du CRM
+    // enveloppent chaque section dans un conteneur .sec (Questionnaire Objectifs, Connaissance),
+    // d'autres placent .sec-title directement au même niveau que les lignes qui suivent
+    // (Entrée en relation, Déclaration d'adéquation). Cette version gère les deux cas, ainsi
+    // que les paragraphes de texte libre et les lignes de case à cocher.
     var sections=[];
-    doc.querySelectorAll('.sec').forEach(function(sec){
-      var titleEl=sec.querySelector('.sec-title');
-      var rows=[];
-      sec.querySelectorAll('.row').forEach(function(row){
-        var lbl=row.querySelector('.lbl'); var val=row.querySelector('.val');
-        var lblText=lbl?lbl.textContent.trim():'';
-        var valText=val?val.textContent.trim():'';
-        if(lblText||valText) rows.push({label:lblText, value:valText||'—'});
-      });
-      // Repli : si aucune structure .row reconnue, prendre le texte brut de la section
-      if(!rows.length){
-        var raw=(sec.textContent||'').replace(/\s+/g,' ').trim();
-        if(titleEl) raw=raw.replace(titleEl.textContent.trim(),'').trim();
-        if(raw) rows.push({label:'', value:raw});
+    var currentSection=null;
+    function newSection(title){ currentSection={title:title||'', rows:[]}; sections.push(currentSection); }
+    function pushRow(label, value){
+      if(!currentSection) newSection('');
+      var v=(value||'').replace(/\s+/g,' ').trim();
+      var l=(label||'').replace(/\s+/g,' ').trim();
+      if(l||v) currentSection.rows.push({label:l, value:v||'—'});
+    }
+    function walk(el){
+      var children=el.children; if(!children) return;
+      for(var i=0;i<children.length;i++){
+        var child=children[i];
+        var cls=child.className||'';
+        if(typeof cls!=='string') cls='';
+        if(cls.indexOf('sec-title')>=0){
+          newSection(child.textContent.trim());
+          continue;
+        }
+        if(cls.indexOf('row')>=0 && (cls.indexOf('chk-row')<0)){
+          var lbl=child.querySelector('.lbl'); var val=child.querySelector('.val');
+          pushRow(lbl?lbl.textContent:'', val?val.textContent:'');
+          continue;
+        }
+        if(cls.indexOf('chk-row')>=0){
+          pushRow('', '[ ] '+child.textContent);
+          continue;
+        }
+        if(child.tagName==='P'){
+          var t=child.textContent;
+          if(t && t.replace(/\s+/g,'').length) pushRow('', t);
+          continue;
+        }
+        // Conteneur générique (.sec, .grid, .grid-1, ou div sans classe reconnue) : on descend dedans
+        walk(child);
       }
-      sections.push({title:titleEl?titleEl.textContent.trim():'', rows:rows});
-    });
-    // Repli global : si aucune section .sec trouvée du tout, utiliser le texte brut du corps
-    if(!sections.length){
-      var bodyEl=doc.querySelector('.body')||doc.body;
-      var raw2=(bodyEl.textContent||'').replace(/\s+/g,' ').trim();
-      if(raw2) sections.push({title:'Contenu', rows:[{label:'', value:raw2}]});
+    }
+    var rootEl=doc.querySelector('.body')||doc.body;
+    walk(rootEl);
+    // Repli ultime : si vraiment rien n'a été extrait, prendre tout le texte brut du corps
+    if(!sections.length || sections.every(function(s){return !s.rows.length;})){
+      var raw2=(rootEl.textContent||'').replace(/\s+/g,' ').trim();
+      if(raw2){ sections=[{title:'Contenu du document', rows:[{label:'', value:raw2}]}]; }
     }
 
     // 2) Construire le PDF avec l'API de dessin natif de jsPDF (texte + formes vectorielles)
@@ -3050,7 +3075,7 @@ async function generateAndUploadSignedPdf(signedDoc, sigData, sigDate){
       pdf.setDrawColor(GOLD[0],GOLD[1],GOLD[2]); pdf.setFillColor(CREAM[0],CREAM[1],CREAM[2]);
       pdf.roundedRect(marginX, y, pageW-2*marginX, bannerH, 4, 4, 'FD');
       pdf.setFont('times','bold'); pdf.setFontSize(11); pdf.setTextColor(NAVY[0],NAVY[1],NAVY[2]);
-      pdf.text('✅ Document signé électroniquement', marginX+12, y+20);
+      pdf.text('Document signé électroniquement', marginX+12, y+20);
       pdf.setFont('times','normal'); pdf.setFontSize(9); pdf.setTextColor(MUTED[0],MUTED[1],MUTED[2]);
       pdf.text('Signé par '+(CLIENT.prenom+' '+CLIENT.nom)+' le '+sigDate, marginX+12, y+36);
       try{ pdf.addImage(sigData,'PNG', marginX+12, y+44, 130, 38); }catch(_imgErr){}
