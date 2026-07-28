@@ -1520,6 +1520,13 @@ async function clientDownloadSignedPdf(docId){
   if(btn){ btn.disabled=false; btn.textContent='⬇ Télécharger le PDF'; }
 }
 
+function openDocHtmlPreview(docId){
+  var doc=(CLIENT.docs||[]).find(function(d){return String(d.id)===String(docId);});
+  if(!doc||!doc.html){toast('Document introuvable','error');return;}
+  var blob=new Blob([doc.html],{type:'text/html'});
+  var url=URL.createObjectURL(blob);
+  window.open(url,'_blank');
+}
 function openDocSig(docId){
   var doc=(CLIENT.docs||[]).find(function(d){return String(d.id)===String(docId);});
   if(!doc){toast('Document introuvable','error');return;}
@@ -1528,13 +1535,13 @@ function openDocSig(docId){
   if(!z){toast('Zone de signature introuvable','error');return;}
   z.style.display='block';
 
-  // Bouton "Voir le document" si c'est un doc questionnaire
+  // Bouton "Voir le document" : affiche le contenu réel du document (déjà généré
+  // correctement par le CRM pour ce type précis), plutôt que de tenter de le
+  // reconstruire génériquement — ce qui affichait auparavant systématiquement
+  // le questionnaire Objectifs quel que soit le document réellement envoyé.
   var previewBtn='';
-  var effectiveDocType=doc.docType||doc.type;
-  if(effectiveDocType){
-    var docKeyMap={objectifs:'objectifs',connaissance:'connaissance',entree:'objectifs',adequation:'connaissance'};
-    var previewKey=docKeyMap[effectiveDocType]||effectiveDocType;
-    previewBtn='<button onclick="openRecapAndMail(null,null,\''+previewKey+'\')" class="btn btn-outline btn-sm" style="font-size:11px">👁 Voir le document</button>';
+  if(doc.html){
+    previewBtn='<button onclick="openDocHtmlPreview(\''+escH(String(doc.id))+'\')" class="btn btn-outline btn-sm" style="font-size:11px">👁 Voir le document</button>';
   }
 
   z.innerHTML='<div style="background:var(--surface);border:1.5px solid var(--bdr-gold);border-radius:12px;padding:20px;margin-top:12px">'
@@ -3130,26 +3137,12 @@ function confirmSig(){
     return jbPut(MSG_BIN,d);
   }).catch(function(){});
 
-  // ── Générer le vrai PDF signé (Caremma stylé) et l'envoyer en morceaux vers JSONBin
-  generateAndUploadSignedPdf(signedDoc, sigData, sigDate).catch(function(){});
-
-  // ── Générer le PDF récapitulatif avec la signature et ouvrir l'email
-  var docKeyMap={objectifs:'objectifs',connaissance:'connaissance',entree:'objectifs',adequation:'connaissance'};
-  var effDocType=signedDoc.docType||signedDoc.type;
-  var recapKey=effDocType?docKeyMap[effDocType]||effDocType:null;
-  setTimeout(function(){
-    if(recapKey){
-      // Ouvrir le récap avec la signature incluse
-      openRecapAndMail(sigData, sigDate, recapKey);
-    } else {
-      // Pas de questionnaire lié : juste email de notification
-      var today2=new Date().toLocaleDateString('fr-FR',{year:'numeric',month:'long',day:'numeric'});
-      var subject=encodeURIComponent('Document signé — '+signedDoc.nom+' — '+CLIENT.prenom+' '+CLIENT.nom);
-      var bodyTxt=['Bonjour Marc,','',''+CLIENT.prenom+' '+CLIENT.nom+' a signé le document "'+signedDoc.nom+'".',
-        'Date de signature : '+sigDate,'Email client : '+CLIENT.email,'','Cordialement,',CLIENT.prenom+' '+CLIENT.nom];
-      window.location.href='mailto:marc.reverseau@caremmafinance.com?subject='+subject+'&body='+encodeURIComponent(bodyTxt.join('\n'));
-    }
-  },400);
+  // ── Générer le vrai PDF signé (Caremma stylé, correctement typé) et l'envoyer en morceaux vers JSONBin
+  generateAndUploadSignedPdf(signedDoc, sigData, sigDate).then(function(){
+    toast('✅ Document signé et transmis à votre conseiller','success');
+  }).catch(function(){
+    toast('Document signé — la génération du PDF a rencontré un souci, votre conseiller a été notifié.','');
+  });
 }
 
 // ═══ REPORTING ═══
