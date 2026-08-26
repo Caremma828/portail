@@ -925,7 +925,7 @@ function fetchPublications(){
   return fetch(PUBLICATIONS_URL+'?t='+Date.now(),{cache:'no-store'})
     .then(function(r){if(!r.ok)throw new Error('pub '+r.status);return r.json();})
     .then(function(j){return (j&&j.items)||[];})
-    .catch(function(){return [];});
+    .catch(function(){return null;}); // null = échec réseau (distinct d'une liste vide légitime)
 }
 var EJS_PUBLIC='cstVoAsfF9vn4uc6C',EJS_SERVICE='service_qz3nkkq',EJS_TPL='template_wmauhka',EJS_TPL_SIG='template_88jyjec',EJS_SERVICE_SIG='service_hp5456h';
 var _PHTML_B64="PGRpdiBpZD0icHMyIiBzdHlsZT0iZGlzcGxheTpibG9jayI+CiAgPGRpdiBjbGFzcz0ic2VjdGlvbi1oZWFkZXIiPgogICAgPGgyPlF1ZXN0aW9ubmFpcmUgT2JqZWN0aWZzPC9oMj4KICAgIDxkaXYgc3R5bGU9ImRpc3BsYXk6ZmxleDtnYXA6OHB4Ij4KICAgICAgPGJ1dHRvbiBjbGFzcz0iYnRuIGJ0bi1vdXRsaW5lIGJ0bi1zbSIgb25jbGljaz0icHJldlN0ZXAoJ2VudHJlZScpIj7ihpAgw4l0YXBlIHByw6ljLjwvYnV0dG9uPgogICAgICA8YnV0dG9uIGNsYXNzPSJidG4gYnRuLXByaW1hcnkgYnRuLXNtIiBvbmNsaWNrPSJuZXh0U3RlcCgncW9iamVjdGlmcycsJ3F1ZXN0aW9ubmFpcmUnKSI+w4l0YXBlIHN1aXZhbnRlIOKGkjwvYnV0dG9uPgogICAgPC9kaXY+CiAgPC9kaXY+CiAgPGRpdiBjbGFzcz0iaW5mby1ib3giPvCfjq8gw4l0YXBlIDIvNCBkdSBwYXJjb3VycyBjbGllbnQg4oCUIFJlY3VlaWwgZGVzIG9iamVjdGlmcyBkZSBwbGFjZW1lbnQuPC9kaXY+CgogIDxkaXYgY2xhc3M9InByb2dyZXNzLXN0ZXBzIiBpZD0icW8tcHJvZ3Jlc3MiPgogICAgPGRpdiBjbGFzcz0icHJvZ3Jlc3Mtc3RlcCBhY3RpdmUiPjxkaXYgY2xhc3M9InBzLWRvdCI+MTwvZGl2PjxkaXYgY2xhc3M9InBzLWxhYmVsIj5JZGVudGl0w6k8L2Rpdj48L2Rpdj4KICAgIDxkaXYgY2xhc3M9InByb2dyZXNzLXN0ZXAiPjxkaXYgY2xhc3M9InBzLWRvdCI+MjwvZGl2PjxkaXYgY2xhc3M9InBzLWxhYmVsIj5TaXR1YXRpb248L2Rpdj48L2Rpdj4KICAgIDxkaXYgY2xhc3M9InByb2dyZXNzLXN0ZXAiPjxkaXYgY2xhc3M9InBzLWRvdCI+MzwvZGl2PjxkaXYgY2xhc3M9InBzLWxhYmVsIj5GaW5hbmNlczwvZGl2PjwvZGl2PgogICAgPGRpdiBjbGFzcz0icHJvZ3Jlc3Mtc3RlcCI+PGRpdiBjbGFzcz0icHMtZG90Ij40PC9kaXY+PGRpdiBjbGFzcz0icHMtbGFiZWwiPlBhdHJpbW9pbmU8L2Rpdj48L2Rpdj4KICAgIDxkaXYgY2xhc3M9InByb2dyZXNzLXN0ZXAiPjxkaXYgY2xhc3M9InBzLWRvdCI+NTwvZGl2PjxkaXYgY2xhc3M9InBzLWxhYmVsIj5Db25uYWlzc2FuY2U8L2Rpdj48L2Rpdj4KICAgIDxkaXYgY2xhc3M9InByb2dyZXNzLXN0ZXAiPjxkaXYgY2xhc3M9InBzLWRvdCI+NjwvZGl2PjxkaXYgY2xhc3M9InBzLWxhYmVsIj5PYmplY3RpZnM8L2Rpdj48L2Rpdj4KICAgIDxkaXYgY2xhc3M9InByb2dyZXNzLXN0ZXAiPjxkaXYgY2xhc3M9InBzLWRvdCI+NzwvZGl2PjxkaXYgY2xhc3M9InBzLWxhYmVsIj5FU0c8L2Rpdj48L2Rpdj4KICAgIDxkaXYgY2xhc3M9InByb2dyZXNzLXN0ZXAiPjxkaXYgY2xhc3M9InBzLWRvdCI+ODwvZGl2PjxkaXYgY2xhc3M9InBzLWxhYmVsIj5Qcm9maWw8L2Rpdj48L2Rpdj4KICA8L2Rpdj4KCiAgPGRpdiBjbGFzcz0icS1zZWN0aW9uIiBzdHlsZT0iZGlzcGxheTpibG9jayIgaWQ9InFvLXMwIj4KICAgIDxkaXYgY2xhc3M9ImNhcmQiPgogICAgICA8ZGl2IGNsYXNzPSJxLXRpdGxlIj4xLiBJZGVudGl0w6kgZHUgc291c2NyaXB0ZXVyPC9kaXY+CiAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JpZCI+CiAgICAgICAgPGRpdiBjbGFzcz0iZm9ybS1ncm91cCI+PGxhYmVsPkNpdmlsaXTDqTwvbGFiZWw+PHNlbGVjdCBpZD0icW8tY2l2Ij48b3B0aW9uPk1hZGFtZTwvb3B0aW9uPjxvcHRpb24+TW9uc2lldXI8L29wdGlvbj48L3NlbGVjdD48L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyb3VwIj48bGFiZWw+Tm9tIGRlIG5haXNzYW5jZTwvbGFiZWw+PGlucHV0IGlkPSJxby1ub20tbmFpc3MiIHBsYWNlaG9sZGVyPSJOb20gZGUgbmFpc3NhbmNlIj48L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyb3VwIj48bGFiZWw+Tm9tIGQndXNhZ2U8L2xhYmVsPjxpbnB1dCBpZD0icW8tbm9tLXVzYWdlIiBwbGFjZWhvbGRlcj0iTm9tIGQndXNhZ2UiPjwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAiPjxsYWJlbD5QcsOpbm9tKHMpPC9sYWJlbD48aW5wdXQgaWQ9InFvLXByZW5vbSIgcGxhY2Vob2xkZXI9IlByw6lub20ocykiPjwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAiPjxsYWJlbD5EYXRlIGRlIG5haXNzYW5jZTwvbGFiZWw+PGlucHV0IGlkPSJxby1kZG4iIHR5cGU9ImRhdGUiPjwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAiPjxsYWJlbD5OYXRpb25hbGl0w6k8L2xhYmVsPjxpbnB1dCBpZD0icW8tbmF0aW9uYWxpdGUiIHZhbHVlPSJGcmFuw6dhaXNlIj48L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyb3VwIGZvcm0tZnVsbCI+PGxhYmVsPkFkcmVzc2UgcG9zdGFsZTwvbGFiZWw+PGlucHV0IGlkPSJxby1hZHJlc3NlIiBwbGFjZWhvbGRlcj0iQWRyZXNzZSBjb21wbMOodGUiPjwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAiPjxsYWJlbD5FbWFpbDwvbGFiZWw+PGlucHV0IGlkPSJxby1lbWFpbCIgdHlwZT0iZW1haWwiIHBsYWNlaG9sZGVyPSJlbWFpbEBleGVtcGxlLmZyIj48L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyb3VwIj48bGFiZWw+VMOpbMOpcGhvbmU8L2xhYmVsPjxpbnB1dCBpZD0icW8tdGVsIiBwbGFjZWhvbGRlcj0iMDYuLi4iPjwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAgZm9ybS1mdWxsIj48bGFiZWw+VHJhbmNoZSBkJ8OiZ2U8L2xhYmVsPgogICAgICAgICAgPGRpdiBzdHlsZT0iZGlzcGxheTpmbGV4O2dhcDo4cHg7ZmxleC13cmFwOndyYXAiPgogICAgICAgICAgICA8ZGl2IGNsYXNzPSJyYWRpby1vcHQiPjxpbnB1dCB0eXBlPSJyYWRpbyIgbmFtZT0icW8tYWdlIiB2YWx1ZT0iPDUwIj4gPGxhYmVsPk1vaW5zIGRlIDUwIGFuczwvbGFiZWw+PC9kaXY+CiAgICAgICAgICAgIDxkaXYgY2xhc3M9InJhZGlvLW9wdCI+PGlucHV0IHR5cGU9InJhZGlvIiBuYW1lPSJxby1hZ2UiIHZhbHVlPSI1MC02MCI+IDxsYWJlbD41MCDDoCA2MCBhbnM8L2xhYmVsPjwvZGl2PgogICAgICAgICAgICA8ZGl2IGNsYXNzPSJyYWRpby1vcHQiPjxpbnB1dCB0eXBlPSJyYWRpbyIgbmFtZT0icW8tYWdlIiB2YWx1ZT0iNjEtNzAiPiA8bGFiZWw+NjEgw6AgNzAgYW5zPC9sYWJlbD48L2Rpdj4KICAgICAgICAgICAgPGRpdiBjbGFzcz0icmFkaW8tb3B0Ij48aW5wdXQgdHlwZT0icmFkaW8iIG5hbWU9InFvLWFnZSIgdmFsdWU9Ij43MCI+IDxsYWJlbD5QbHVzIGRlIDcwIGFuczwvbGFiZWw+PC9kaXY+CiAgICAgICAgICA8L2Rpdj4KICAgICAgICA8L2Rpdj4KICAgICAgPC9kaXY+CiAgICAgIDxkaXYgY2xhc3M9InEtbmF2LWJ0bnMiPjxidXR0b24gY2xhc3M9ImJ0biBidG4tZ29sZCIgb25jbGljaz0icW9OYXYoMSkiPlN1aXZhbnQg4oaSPC9idXR0b24+PC9kaXY+CiAgICA8L2Rpdj4KICA8L2Rpdj4KCiAgPGRpdiBjbGFzcz0icS1zZWN0aW9uIiBzdHlsZT0iZGlzcGxheTpub25lIiBpZD0icW8tczEiPgogICAgPGRpdiBjbGFzcz0iY2FyZCI+CiAgICAgIDxkaXYgY2xhc3M9InEtdGl0bGUiPjIuIFNpdHVhdGlvbiBmYW1pbGlhbGUgJiBwcm9mZXNzaW9ubmVsbGU8L2Rpdj4KICAgICAgPGRpdiBjbGFzcz0iZm9ybS1ncmlkIj4KICAgICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyb3VwIj48bGFiZWw+U2l0dWF0aW9uIGZhbWlsaWFsZTwvbGFiZWw+CiAgICAgICAgICA8c2VsZWN0IGlkPSJxby1zaXQtZmFtIj48b3B0aW9uPkPDqWxpYmF0YWlyZTwvb3B0aW9uPjxvcHRpb24+TWFyacOpKGUpPC9vcHRpb24+PG9wdGlvbj5QYWNzw6koZSk8L29wdGlvbj48b3B0aW9uPkRpdm9yY8OpKGUpPC9vcHRpb24+PG9wdGlvbj5WZXVmKHZlKTwvb3B0aW9uPjwvc2VsZWN0PgogICAgICAgIDwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAiPjxsYWJlbD5Sw6lnaW1lIG1hdHJpbW9uaWFsPC9sYWJlbD48aW5wdXQgaWQ9InFvLXJlZ2ltZSIgcGxhY2Vob2xkZXI9IkNvbW11bmF1dMOpIGzDqWdhbGUuLi4iPjwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAiPjxsYWJlbD5Qcm9mZXNzaW9uPC9sYWJlbD48aW5wdXQgaWQ9InFvLXByb2Zlc3Npb24iIHBsYWNlaG9sZGVyPSJQcm9mZXNzaW9uLi4uIj48L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyb3VwIj48bGFiZWw+Q29uam9pbnQoZSk8L2xhYmVsPjxpbnB1dCBpZD0icW8tY29uam9pbnQiIHBsYWNlaG9sZGVyPSJOb20gJiBwcm9mZXNzaW9uIGR1IGNvbmpvaW50Ij48L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyb3VwIj48bGFiZWw+QW5uw6llIGTDqXBhcnQgcmV0cmFpdGUgcHLDqXZ1PC9sYWJlbD48aW5wdXQgaWQ9InFvLXJldHJhaXRlIiB0eXBlPSJudW1iZXIiIHBsYWNlaG9sZGVyPSIyMDMwIj48L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyb3VwIj48bGFiZWw+UFBFPC9sYWJlbD4KICAgICAgICAgIDxzZWxlY3QgaWQ9InFvLXBwZSI+PG9wdGlvbiB2YWx1ZT0ibm9uIj5Ob248L29wdGlvbj48b3B0aW9uIHZhbHVlPSJvdWkiPk91aSDigJQgUGVyc29ubmUgUG9saXRpcXVlbWVudCBFeHBvc8OpZTwvb3B0aW9uPjwvc2VsZWN0PgogICAgICAgIDwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAgZm9ybS1mdWxsIj48bGFiZWw+RW5mYW50cyDDoCBjaGFyZ2U8L2xhYmVsPgogICAgICAgICAgPGRpdiBpZD0icW8tZW5mYW50cy1saXN0IiBzdHlsZT0ibWFyZ2luLWJvdHRvbTo4cHgiPjwvZGl2PgogICAgICAgICAgPGJ1dHRvbiBjbGFzcz0iYnRuIGJ0bi1vdXRsaW5lIGJ0bi1zbSIgb25jbGljaz0iYWRkRW5mYW50Um93KCkiPisgQWpvdXRlciBlbmZhbnQ8L2J1dHRvbj4KICAgICAgICA8L2Rpdj4KICAgICAgPC9kaXY+CiAgICAgIDxkaXYgY2xhc3M9InEtbmF2LWJ0bnMiPjxidXR0b24gY2xhc3M9ImJ0biBidG4tb3V0bGluZSIgb25jbGljaz0icW9OYXYoMCkiPuKGkCBQcsOpY8OpZGVudDwvYnV0dG9uPjxidXR0b24gY2xhc3M9ImJ0biBidG4tZ29sZCIgb25jbGljaz0icW9OYXYoMikiPlN1aXZhbnQg4oaSPC9idXR0b24+PC9kaXY+CiAgICA8L2Rpdj4KICA8L2Rpdj4KCiAgPGRpdiBjbGFzcz0icS1zZWN0aW9uIiBzdHlsZT0iZGlzcGxheTpub25lIiBpZD0icW8tczIiPgogICAgPGRpdiBjbGFzcz0iY2FyZCI+CiAgICAgIDxkaXYgY2xhc3M9InEtdGl0bGUiPjMuIFNpdHVhdGlvbiBmaW5hbmNpw6hyZTwvZGl2PgogICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyaWQiPgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAiPjxsYWJlbD5SZXZlbnVzIGFubnVlbHMgZHUgY2xpZW50ICjigqwpPC9sYWJlbD48aW5wdXQgaWQ9InFvLXJldi1jbGllbnQiIHR5cGU9Im51bWJlciIgcGxhY2Vob2xkZXI9IjAiPjwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAiPjxsYWJlbD5SZXZlbnVzIGR1IGNvbmpvaW50ICjigqwpPC9sYWJlbD48aW5wdXQgaWQ9InFvLXJldi1jb25qb2ludCIgdHlwZT0ibnVtYmVyIiBwbGFjZWhvbGRlcj0iMCI+PC9kaXY+CiAgICAgICAgPGRpdiBjbGFzcz0iZm9ybS1ncm91cCI+PGxhYmVsPlJldmVudXMgZm9uY2llcnMgKOKCrCk8L2xhYmVsPjxpbnB1dCBpZD0icW8tcmV2LWZvbmNpZXIiIHR5cGU9Im51bWJlciIgcGxhY2Vob2xkZXI9IjAiPjwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAiPjxsYWJlbD5SZXZlbnVzIGRlIGNhcGl0YXV4IG1vYmlsaWVycyAo4oKsKTwvbGFiZWw+PGlucHV0IGlkPSJxby1yZXYtcmNtIiB0eXBlPSJudW1iZXIiIHBsYWNlaG9sZGVyPSIwIj48L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyb3VwIj48bGFiZWw+Q2hhcmdlcyBhbm51ZWxsZXMgZHUgZm95ZXIgKOKCrCk8L2xhYmVsPjxpbnB1dCBpZD0icW8tY2hhcmdlcyIgdHlwZT0ibnVtYmVyIiBwbGFjZWhvbGRlcj0iMCI+PC9kaXY+CiAgICAgICAgPGRpdiBjbGFzcz0iZm9ybS1ncm91cCI+PGxhYmVsPkNhcGFjaXTDqSBkJ8OpcGFyZ25lIGFubnVlbGxlICjigqwpPC9sYWJlbD48aW5wdXQgaWQ9InFvLWVwYXJnbmUiIHR5cGU9Im51bWJlciIgcGxhY2Vob2xkZXI9IjAiIG9uaW5wdXQ9ImNhbGNFcGFyZ25lKCkiPjwvZGl2PgogICAgICA8L2Rpdj4KICAgICAgPGRpdiBpZD0icW8tZXBhcmduZS1yZXN1bHQiIHN0eWxlPSJiYWNrZ3JvdW5kOnZhcigtLW9mZik7Ym9yZGVyLXJhZGl1czo3cHg7cGFkZGluZzoxMHB4IDE0cHg7Zm9udC1zaXplOjEyLjVweDtjb2xvcjp2YXIoLS1tdXRlZCk7bWFyZ2luLXRvcDo4cHgiPjwvZGl2PgogICAgICA8ZGl2IGNsYXNzPSJxLW5hdi1idG5zIj48YnV0dG9uIGNsYXNzPSJidG4gYnRuLW91dGxpbmUiIG9uY2xpY2s9InFvTmF2KDEpIj7ihpAgUHLDqWPDqWRlbnQ8L2J1dHRvbj48YnV0dG9uIGNsYXNzPSJidG4gYnRuLWdvbGQiIG9uY2xpY2s9InFvTmF2KDMpIj5TdWl2YW50IOKGkjwvYnV0dG9uPjwvZGl2PgogICAgPC9kaXY+CiAgPC9kaXY+CgogIDxkaXYgY2xhc3M9InEtc2VjdGlvbiIgc3R5bGU9ImRpc3BsYXk6bm9uZSIgaWQ9InFvLXMzIj4KICAgIDxkaXYgY2xhc3M9ImNhcmQiPgogICAgICA8ZGl2IGNsYXNzPSJxLXRpdGxlIj40LiBQYXRyaW1vaW5lPC9kaXY+CiAgICAgIDxkaXYgaWQ9InFvLXBhdHJpbW9pbmUtdGFibGUiIHN0eWxlPSJtYXJnaW4tYm90dG9tOjE0cHgiPgogICAgICAgIDx0YWJsZSBjbGFzcz0iZGF0YS10YWJsZSIgc3R5bGU9ImZvbnQtc2l6ZToxMnB4Ij4KICAgICAgICAgIDx0aGVhZD48dHI+PHRoPk5hdHVyZSBkdSBwbGFjZW1lbnQ8L3RoPjx0aD5Nb250YW50IHPDqWN1cml0YWlyZSAo4oKsKTwvdGg+PHRoPk1vbnRhbnQgcmlzcXXDqSAvIFVDICjigqwpPC90aD48L3RyPjwvdGhlYWQ+CiAgICAgICAgICA8dGJvZHk+CiAgICAgICAgICAgIDx0cj48dGQ+TGl2cmV0cyByw6lnbGVtZW50w6lzIChBLCBMRETigKYpPC90ZD48dGQ+PGlucHV0IGNsYXNzPSJpbmxpbmUtaW5wdXQiIGlkPSJwdGYtbGl2cmV0cy1zIiB0eXBlPSJudW1iZXIiIHBsYWNlaG9sZGVyPSIwIj48L3RkPjx0ZD7igJQ8L3RkPjwvdHI+CiAgICAgICAgICAgIDx0cj48dGQ+w4lwYXJnbmUgbG9nZW1lbnQgKENFTC9QRUwpPC90ZD48dGQ+PGlucHV0IGNsYXNzPSJpbmxpbmUtaW5wdXQiIGlkPSJwdGYtY2VsIiB0eXBlPSJudW1iZXIiIHBsYWNlaG9sZGVyPSIwIj48L3RkPjx0ZD7igJQ8L3RkPjwvdHI+CiAgICAgICAgICAgIDx0cj48dGQ+UEVQPC90ZD48dGQ+PGlucHV0IGNsYXNzPSJpbmxpbmUtaW5wdXQiIGlkPSJwdGYtcGVwLXMiIHR5cGU9Im51bWJlciIgcGxhY2Vob2xkZXI9IjAiPjwvdGQ+PHRkPjxpbnB1dCBjbGFzcz0iaW5saW5lLWlucHV0IiBpZD0icHRmLXBlcC1yIiB0eXBlPSJudW1iZXIiIHBsYWNlaG9sZGVyPSIwIj48L3RkPjwvdHI+CiAgICAgICAgICAgIDx0cj48dGQ+QXNzdXJhbmNlLXZpZSAvIFBFUlA8L3RkPjx0ZD48aW5wdXQgY2xhc3M9ImlubGluZS1pbnB1dCIgaWQ9InB0Zi1hdi1zIiB0eXBlPSJudW1iZXIiIHBsYWNlaG9sZGVyPSIwIj48L3RkPjx0ZD48aW5wdXQgY2xhc3M9ImlubGluZS1pbnB1dCIgaWQ9InB0Zi1hdi1yIiB0eXBlPSJudW1iZXIiIHBsYWNlaG9sZGVyPSIwIj48L3RkPjwvdHI+CiAgICAgICAgICAgIDx0cj48dGQ+UEVBIC8gQ29tcHRlLXRpdHJlczwvdGQ+PHRkPuKAlDwvdGQ+PHRkPjxpbnB1dCBjbGFzcz0iaW5saW5lLWlucHV0IiBpZD0icHRmLXBlYSIgdHlwZT0ibnVtYmVyIiBwbGFjZWhvbGRlcj0iMCI+PC90ZD48L3RyPgogICAgICAgICAgICA8dHI+PHRkPsOJcGFyZ25lIHNhbGFyaWFsZTwvdGQ+PHRkPjxpbnB1dCBjbGFzcz0iaW5saW5lLWlucHV0IiBpZD0icHRmLXNhbC1zIiB0eXBlPSJudW1iZXIiIHBsYWNlaG9sZGVyPSIwIj48L3RkPjx0ZD48aW5wdXQgY2xhc3M9ImlubGluZS1pbnB1dCIgaWQ9InB0Zi1zYWwtciIgdHlwZT0ibnVtYmVyIiBwbGFjZWhvbGRlcj0iMCI+PC90ZD48L3RyPgogICAgICAgICAgICA8dHI+PHRkPkltbW9iaWxpZXI8L3RkPjx0ZD48aW5wdXQgY2xhc3M9ImlubGluZS1pbnB1dCIgaWQ9InB0Zi1pbW1vIiB0eXBlPSJudW1iZXIiIHBsYWNlaG9sZGVyPSIwIj48L3RkPjx0ZD7igJQ8L3RkPjwvdHI+CiAgICAgICAgICA8L3Rib2R5PgogICAgICAgIDwvdGFibGU+CiAgICAgICAgPHN0eWxlPi5pbmxpbmUtaW5wdXR7Ym9yZGVyOm5vbmU7Ym9yZGVyLWJvdHRvbToxLjVweCBzb2xpZCB2YXIoLS1saWdodCk7YmFja2dyb3VuZDp0cmFuc3BhcmVudDt3aWR0aDoxMDBweDtwYWRkaW5nOjNweCA2cHg7Zm9udC1zaXplOjEycHg7Y29sb3I6dmFyKC0tdGV4dCl9LmlubGluZS1pbnB1dDpmb2N1c3tvdXRsaW5lOm5vbmU7Ym9yZGVyLWJvdHRvbS1jb2xvcjp2YXIoLS1nb2xkKX08L3N0eWxlPgogICAgICA8L2Rpdj4KICAgICAgPGRpdiBjbGFzcz0iZm9ybS1ncmlkIj4KICAgICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyb3VwIj48bGFiZWw+UHJvcHJpw6l0YWlyZSBpbW1vYmlsaWVyID88L2xhYmVsPjxzZWxlY3QgaWQ9InFvLXByb3ByaW8iPjxvcHRpb24+Tm9uPC9vcHRpb24+PG9wdGlvbj5PdWkg4oCUIHLDqXNpZGVuY2UgcHJpbmNpcGFsZTwvb3B0aW9uPjxvcHRpb24+T3VpIOKAlCByw6lzaWRlbmNlIHNlY29uZGFpcmU8L29wdGlvbj48b3B0aW9uPk91aSDigJQgaW52ZXN0aXNzZW1lbnQgbG9jYXRpZjwvb3B0aW9uPjwvc2VsZWN0PjwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAiPjxsYWJlbD5QYXJ0IHPDqWN1cml0YWlyZSBkdSBwYXRyaW1vaW5lPC9sYWJlbD48c2VsZWN0IGlkPSJxby1wYXJ0LXNlY3UiPjxvcHRpb24+Jmd0OyA2MCU8L29wdGlvbj48b3B0aW9uPjMwLTYwJTwvb3B0aW9uPjxvcHRpb24+Jmx0OyAzMCU8L29wdGlvbj48L3NlbGVjdD48L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyb3VwIj48bGFiZWw+UGFydCBkZSBjZSBwcm9qZXQgZGFucyBsZSBwYXRyaW1vaW5lPC9sYWJlbD48c2VsZWN0IGlkPSJxby1wYXJ0LXByb2pldCI+PG9wdGlvbj4mbHQ7IDIwJTwvb3B0aW9uPjxvcHRpb24+MjAtNTAlPC9vcHRpb24+PG9wdGlvbj4mZ3Q7IDUwJTwvb3B0aW9uPjwvc2VsZWN0PjwvZGl2PgogICAgICA8L2Rpdj4KICAgICAgPGRpdiBjbGFzcz0icS1uYXYtYnRucyI+PGJ1dHRvbiBjbGFzcz0iYnRuIGJ0bi1vdXRsaW5lIiBvbmNsaWNrPSJxb05hdigyKSI+4oaQIFByw6ljw6lkZW50PC9idXR0b24+PGJ1dHRvbiBjbGFzcz0iYnRuIGJ0bi1nb2xkIiBvbmNsaWNrPSJxb05hdig0KSI+U3VpdmFudCDihpI8L2J1dHRvbj48L2Rpdj4KICAgIDwvZGl2PgogIDwvZGl2PgoKICA8ZGl2IGNsYXNzPSJxLXNlY3Rpb24iIHN0eWxlPSJkaXNwbGF5Om5vbmUiIGlkPSJxby1zNCI+CiAgICA8ZGl2IGNsYXNzPSJjYXJkIj4KICAgICAgPGRpdiBjbGFzcz0icS10aXRsZSI+NS4gQ29ubmFpc3NhbmNlICYgZXhww6lyaWVuY2UgZmluYW5jacOocmU8L2Rpdj4KICAgICAgPGRpdiBzdHlsZT0ibWFyZ2luLWJvdHRvbToxNHB4Ij4KICAgICAgICA8bGFiZWwgc3R5bGU9ImZvbnQtc2l6ZToxMnB4O2ZvbnQtd2VpZ2h0OjYwMDtjb2xvcjp2YXIoLS1uYXZ5KSI+Tml2ZWF1IGRlIGNvbm5haXNzYW5jZSBkZXMgbWFyY2jDqXMgOjwvbGFiZWw+CiAgICAgICAgPGRpdiBzdHlsZT0iZGlzcGxheTpmbGV4O2dhcDo4cHg7ZmxleC13cmFwOndyYXA7bWFyZ2luLXRvcDo4cHgiPgogICAgICAgICAgPGRpdiBjbGFzcz0icmFkaW8tb3B0Ij48aW5wdXQgdHlwZT0icmFkaW8iIG5hbWU9InFvLWNvbm5haXMiIHZhbHVlPSIwIj48bGFiZWw+SW5leGlzdGFudGU8L2xhYmVsPjwvZGl2PgogICAgICAgICAgPGRpdiBjbGFzcz0icmFkaW8tb3B0Ij48aW5wdXQgdHlwZT0icmFkaW8iIG5hbWU9InFvLWNvbm5haXMiIHZhbHVlPSIxIj48bGFiZWw+TW9kw6lyw6llPC9sYWJlbD48L2Rpdj4KICAgICAgICAgIDxkaXYgY2xhc3M9InJhZGlvLW9wdCI+PGlucHV0IHR5cGU9InJhZGlvIiBuYW1lPSJxby1jb25uYWlzIiB2YWx1ZT0iMiI+PGxhYmVsPkNvcnJlY3RlPC9sYWJlbD48L2Rpdj4KICAgICAgICAgIDxkaXYgY2xhc3M9InJhZGlvLW9wdCI+PGlucHV0IHR5cGU9InJhZGlvIiBuYW1lPSJxby1jb25uYWlzIiB2YWx1ZT0iMyI+PGxhYmVsPkJvbm5lPC9sYWJlbD48L2Rpdj4KICAgICAgICA8L2Rpdj4KICAgICAgPC9kaXY+CiAgICAgIDxkaXYgc3R5bGU9Im1hcmdpbi1ib3R0b206MTRweCI+CiAgICAgICAgPGxhYmVsIHN0eWxlPSJmb250LXNpemU6MTJweDtmb250LXdlaWdodDo2MDA7Y29sb3I6dmFyKC0tbmF2eSkiPkVuIGNhcyBkZSBiYWlzc2UgZGUgMTUlIGRlIHZvcyBwbGFjZW1lbnRzLCB2b3VzIDo8L2xhYmVsPgogICAgICAgIDxkaXYgc3R5bGU9Im1hcmdpbi10b3A6OHB4Ij4KICAgICAgICAgIDxkaXYgY2xhc3M9InJhZGlvLW9wdCI+PGlucHV0IHR5cGU9InJhZGlvIiBuYW1lPSJxby1yZWFjdGlvbiIgdmFsdWU9IjAiPjxsYWJlbD5WZW5kZXogdG91dCBpbW3DqWRpYXRlbWVudDwvbGFiZWw+PC9kaXY+CiAgICAgICAgICA8ZGl2IGNsYXNzPSJyYWRpby1vcHQiPjxpbnB1dCB0eXBlPSJyYWRpbyIgbmFtZT0icW8tcmVhY3Rpb24iIHZhbHVlPSIxIj48bGFiZWw+QXR0ZW5kZXogcXVlIGxlcyB2YWxldXJzIHJlbW9udGVudDwvbGFiZWw+PC9kaXY+CiAgICAgICAgICA8ZGl2IGNsYXNzPSJyYWRpby1vcHQiPjxpbnB1dCB0eXBlPSJyYWRpbyIgbmFtZT0icW8tcmVhY3Rpb24iIHZhbHVlPSIyIj48bGFiZWw+VmVuZGV6IGxhIHBhcnRpZSBheWFudCBsZSBwbHVzIGJhaXNzw6k8L2xhYmVsPjwvZGl2PgogICAgICAgICAgPGRpdiBjbGFzcz0icmFkaW8tb3B0Ij48aW5wdXQgdHlwZT0icmFkaW8iIG5hbWU9InFvLXJlYWN0aW9uIiB2YWx1ZT0iMyI+PGxhYmVsPlByb2ZpdGV6IGRlIGxhIGJhaXNzZSBwb3VyIGludmVzdGlyIGRhdmFudGFnZTwvbGFiZWw+PC9kaXY+CiAgICAgICAgPC9kaXY+CiAgICAgIDwvZGl2PgogICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyaWQiPgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAiPjxsYWJlbD5UcmFuc2FjdGlvbnMgc3VyIE9QQ1ZNIC8gZm9uZHMgPzwvbGFiZWw+PHNlbGVjdCBpZD0icW8tb3Bjdm0iPjxvcHRpb24+Tm9uPC9vcHRpb24+PG9wdGlvbj5PdWk8L29wdGlvbj48L3NlbGVjdD48L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyb3VwIj48bGFiZWw+R2VzdGlvbiBzb3VzIG1hbmRhdCA/PC9sYWJlbD48c2VsZWN0IGlkPSJxby1tYW5kYXQiPjxvcHRpb24+Tm9uPC9vcHRpb24+PG9wdGlvbj5PdWk8L29wdGlvbj48L3NlbGVjdD48L2Rpdj4KICAgICAgPC9kaXY+CiAgICAgIDxkaXYgY2xhc3M9InEtbmF2LWJ0bnMiPjxidXR0b24gY2xhc3M9ImJ0biBidG4tb3V0bGluZSIgb25jbGljaz0icW9OYXYoMykiPuKGkCBQcsOpY8OpZGVudDwvYnV0dG9uPjxidXR0b24gY2xhc3M9ImJ0biBidG4tZ29sZCIgb25jbGljaz0icW9OYXYoNSkiPlN1aXZhbnQg4oaSPC9idXR0b24+PC9kaXY+CiAgICA8L2Rpdj4KICA8L2Rpdj4KCiAgPGRpdiBjbGFzcz0icS1zZWN0aW9uIiBzdHlsZT0iZGlzcGxheTpub25lIiBpZD0icW8tczUiPgogICAgPGRpdiBjbGFzcz0iY2FyZCI+CiAgICAgIDxkaXYgY2xhc3M9InEtdGl0bGUiPjYuIE9iamVjdGlmcyBkZSBzb3VzY3JpcHRpb248L2Rpdj4KICAgICAgPGRpdiBzdHlsZT0ibWFyZ2luLWJvdHRvbToxNnB4Ij4KICAgICAgICA8bGFiZWwgc3R5bGU9ImZvbnQtc2l6ZToxMnB4O2ZvbnQtd2VpZ2h0OjYwMDtjb2xvcjp2YXIoLS1uYXZ5KSI+T2JqZWN0aWYocykgcHJpbmNpcGFsKGF1eCkgKHBsdXNpZXVycyBjaG9peCBwb3NzaWJsZXMpIDo8L2xhYmVsPgogICAgICAgIDxkaXYgc3R5bGU9ImRpc3BsYXk6Z3JpZDtncmlkLXRlbXBsYXRlLWNvbHVtbnM6MWZyIDFmcjtnYXA6OHB4O21hcmdpbi10b3A6OHB4Ij4KICAgICAgICAgIDxkaXYgY2xhc3M9ImNoZWNrLW9wdCI+PGlucHV0IHR5cGU9ImNoZWNrYm94IiBpZD0icW8tb2JqLXByZWNhdXRpb24iPjxsYWJlbCBmb3I9InFvLW9iai1wcmVjYXV0aW9uIj7DiXBhcmduZSBkZSBwcsOpY2F1dGlvbjwvbGFiZWw+PC9kaXY+CiAgICAgICAgICA8ZGl2IGNsYXNzPSJjaGVjay1vcHQiPjxpbnB1dCB0eXBlPSJjaGVja2JveCIgaWQ9InFvLW9iai1wcm9ncmVzc2lmIj48bGFiZWwgZm9yPSJxby1vYmotcHJvZ3Jlc3NpZiI+Q29uc3RpdHVlciB1bmUgw6lwYXJnbmUgcHJvZ3Jlc3NpdmU8L2xhYmVsPjwvZGl2PgogICAgICAgICAgPGRpdiBjbGFzcz0iY2hlY2stb3B0Ij48aW5wdXQgdHlwZT0iY2hlY2tib3giIGlkPSJxby1vYmotcHJvY2hlcyI+PGxhYmVsIGZvcj0icW8tb2JqLXByb2NoZXMiPkFpZGVyIHNlcyBwcm9jaGVzIC8gaMOpcml0aWVyczwvbGFiZWw+PC9kaXY+CiAgICAgICAgICA8ZGl2IGNsYXNzPSJjaGVjay1vcHQiPjxpbnB1dCB0eXBlPSJjaGVja2JveCIgaWQ9InFvLW9iai1yZXZlbnVzIj48bGFiZWwgZm9yPSJxby1vYmotcmV2ZW51cyI+Q29tcGzDqXRlciBzZXMgcmV2ZW51czwvbGFiZWw+PC9kaXY+CiAgICAgICAgICA8ZGl2IGNsYXNzPSJjaGVjay1vcHQiPjxpbnB1dCB0eXBlPSJjaGVja2JveCIgaWQ9InFvLW9iai12YWxvcmlzZXIiPjxsYWJlbCBmb3I9InFvLW9iai12YWxvcmlzZXIiPlZhbG9yaXNlciB1biBjYXBpdGFsIGV4aXN0YW50PC9sYWJlbD48L2Rpdj4KICAgICAgICAgIDxkaXYgY2xhc3M9ImNoZWNrLW9wdCI+PGlucHV0IHR5cGU9ImNoZWNrYm94IiBpZD0icW8tb2JqLXJldHJhaXRlIj48bGFiZWwgZm9yPSJxby1vYmotcmV0cmFpdGUiPlByw6lwYXJlciBzYSByZXRyYWl0ZTwvbGFiZWw+PC9kaXY+CiAgICAgICAgICA8ZGl2IGNsYXNzPSJjaGVjay1vcHQiPjxpbnB1dCB0eXBlPSJjaGVja2JveCIgaWQ9InFvLW9iai1maXNjYWxpdGUiPjxsYWJlbCBmb3I9InFvLW9iai1maXNjYWxpdGUiPk9wdGltaXNlciBzYSBmaXNjYWxpdMOpPC9sYWJlbD48L2Rpdj4KICAgICAgICAgIDxkaXYgY2xhc3M9ImNoZWNrLW9wdCI+PGlucHV0IHR5cGU9ImNoZWNrYm94IiBpZD0icW8tb2JqLXRyYW5zbWlzc2lvbiI+PGxhYmVsIGZvcj0icW8tb2JqLXRyYW5zbWlzc2lvbiI+T3B0aW1pc2VyIGxhIHRyYW5zbWlzc2lvbjwvbGFiZWw+PC9kaXY+CiAgICAgICAgPC9kaXY+CiAgICAgIDwvZGl2PgogICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyaWQiPgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAiPjxsYWJlbD5Ib3Jpem9uIGRlIHBsYWNlbWVudDwvbGFiZWw+CiAgICAgICAgICA8c2VsZWN0IGlkPSJxby1ob3Jpem9uIj48b3B0aW9uPk1vaW5zIGRlIDMgYW5zPC9vcHRpb24+PG9wdGlvbj4zIMOgIDUgYW5zPC9vcHRpb24+PG9wdGlvbj41IMOgIDggYW5zPC9vcHRpb24+PG9wdGlvbiBzZWxlY3RlZD5QbHVzIGRlIDggYW5zPC9vcHRpb24+PC9zZWxlY3Q+CiAgICAgICAgPC9kaXY+CiAgICAgICAgPGRpdiBjbGFzcz0iZm9ybS1ncm91cCI+PGxhYmVsPk1vbnRhbnQgw6AgcGxhY2VyICjigqwpPC9sYWJlbD48aW5wdXQgaWQ9InFvLW1vbnRhbnQiIHR5cGU9Im51bWJlciIgcGxhY2Vob2xkZXI9IjAiPjwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9ImZvcm0tZ3JvdXAgZm9ybS1mdWxsIj48bGFiZWw+QXBwcm9jaGUgcGFyIHJhcHBvcnQgYXUgcmlzcXVlPC9sYWJlbD4KICAgICAgICAgIDxkaXYgc3R5bGU9Im1hcmdpbi10b3A6NnB4Ij4KICAgICAgICAgICAgPGRpdiBjbGFzcz0icmFkaW8tb3B0Ij48aW5wdXQgdHlwZT0icmFkaW8iIG5hbWU9InFvLXJpc3F1ZSIgdmFsdWU9InNlY3VyaXRhaXJlIj48bGFiZWw+UGxhY2VtZW50IHPDqWN1cmlzw6ksIHBlcmZvcm1hbmNlIG1vaW5zIMOpbGV2w6llPC9sYWJlbD48L2Rpdj4KICAgICAgICAgICAgPGRpdiBjbGFzcz0icmFkaW8tb3B0Ij48aW5wdXQgdHlwZT0icmFkaW8iIG5hbWU9InFvLXJpc3F1ZSIgdmFsdWU9InBydWRlbnQiPjxsYWJlbD5SaXNxdWUgZmFpYmxlIHBvdXIgdW4gcGV1IHBsdXMgZGUgcmVuZGVtZW50PC9sYWJlbD48L2Rpdj4KICAgICAgICAgICAgPGRpdiBjbGFzcz0icmFkaW8tb3B0Ij48aW5wdXQgdHlwZT0icmFkaW8iIG5hbWU9InFvLXJpc3F1ZSIgdmFsdWU9Im1vZGVyZSI+PGxhYmVsPlJpc3F1ZSBtZXN1csOpIHBvdXIgYW3DqWxpb3JlciBsZSByZW5kZW1lbnQ8L2xhYmVsPjwvZGl2PgogICAgICAgICAgICA8ZGl2IGNsYXNzPSJyYWRpby1vcHQiPjxpbnB1dCB0eXBlPSJyYWRpbyIgbmFtZT0icW8tcmlzcXVlIiB2YWx1ZT0iZHluYW1pcXVlIj48bGFiZWw+QXZhbnQgdG91dCB1biByZW5kZW1lbnQgw6lsZXbDqSwgcXVpdHRlIMOgIHByZW5kcmUgZGVzIHJpc3F1ZXMgaW1wb3J0YW50czwvbGFiZWw+PC9kaXY+CiAgICAgICAgICA8L2Rpdj4KICAgICAgICA8L2Rpdj4KICAgICAgPC9kaXY+CiAgICAgIDxkaXYgY2xhc3M9InEtbmF2LWJ0bnMiPjxidXR0b24gY2xhc3M9ImJ0biBidG4tb3V0bGluZSIgb25jbGljaz0icW9OYXYoNCkiPuKGkCBQcsOpY8OpZGVudDwvYnV0dG9uPjxidXR0b24gY2xhc3M9ImJ0biBidG4tZ29sZCIgb25jbGljaz0icW9OYXYoNikiPlN1aXZhbnQg4oaSPC9idXR0b24+PC9kaXY+CiAgICA8L2Rpdj4KICA8L2Rpdj4KCiAgPGRpdiBjbGFzcz0icS1zZWN0aW9uIiBzdHlsZT0iZGlzcGxheTpub25lIiBpZD0icW8tczYiPgogICAgPGRpdiBjbGFzcz0iY2FyZCI+CiAgICAgIDxkaXYgY2xhc3M9InEtdGl0bGUiPjcuIFByw6lmw6lyZW5jZXMgRVNHIC8gRHVyYWJpbGl0w6kgKFNGRFIpPC9kaXY+CiAgICAgIDxkaXYgc3R5bGU9Im1hcmdpbi1ib3R0b206MTJweCI+CiAgICAgICAgPGRpdiBjbGFzcz0iY2hlY2stb3B0Ij48aW5wdXQgdHlwZT0iY2hlY2tib3giIGlkPSJxby1lc2ctc2Vuc2libGUiPjxsYWJlbCBmb3I9InFvLWVzZy1zZW5zaWJsZSI+SmUgc3VpcyBzZW5zaWJsZSBhdXggY3JpdMOocmVzIEVTRyAoZW52aXJvbm5lbWVudCwgc29jaWFsLCBnb3V2ZXJuYW5jZSk8L2xhYmVsPjwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9ImNoZWNrLW9wdCI+PGlucHV0IHR5cGU9ImNoZWNrYm94IiBpZD0icW8tZXNnLWludGVncmVyIj48bGFiZWwgZm9yPSJxby1lc2ctaW50ZWdyZXIiPkplIHNvdWhhaXRlIGludMOpZ3JlciBkZXMgY3JpdMOocmVzIGRlIGR1cmFiaWxpdMOpIGRhbnMgbWVzIGludmVzdGlzc2VtZW50czwvbGFiZWw+PC9kaXY+CiAgICAgICAgPGRpdiBjbGFzcz0iY2hlY2stb3B0Ij48aW5wdXQgdHlwZT0iY2hlY2tib3giIGlkPSJxby1lc2ctbGFiZWwiPjxsYWJlbCBmb3I9InFvLWVzZy1sYWJlbCI+w4AgcHJvZHVpdCDDqXF1aXZhbGVudCwgamUgcHJpdmlsw6lnaWUgdW4gZm9uZHMgYXZlYyBsYWJlbCBFU0c8L2xhYmVsPjwvZGl2PgogICAgICA8L2Rpdj4KICAgICAgPGRpdiBjbGFzcz0iZm9ybS1ncm91cCI+PGxhYmVsPkF4ZSBkZSBwcsOpZsOpcmVuY2UgRVNHPC9sYWJlbD4KICAgICAgICA8c2VsZWN0IGlkPSJxby1lc2ctYXhlIj48b3B0aW9uPkF1Y3VuZSBwcsOpZsOpcmVuY2UgcGFydGljdWxpw6hyZTwvb3B0aW9uPjxvcHRpb24+RW52aXJvbm5lbWVudCAoRSk8L29wdGlvbj48b3B0aW9uPlNvY2lhbCAoUyk8L29wdGlvbj48b3B0aW9uPkdvdXZlcm5hbmNlIChHKTwvb3B0aW9uPjxvcHRpb24+Q29tYmluYWlzb24gRVNHPC9vcHRpb24+PC9zZWxlY3Q+CiAgICAgIDwvZGl2PgogICAgICA8ZGl2IGNsYXNzPSJmb3JtLWdyb3VwIiBzdHlsZT0ibWFyZ2luLXRvcDoxMnB4Ij48bGFiZWw+UGFydCBkZSBsJ8OpcGFyZ25lIGTDqWRpw6llIMOgIGwnaW52ZXN0aXNzZW1lbnQgZHVyYWJsZTwvbGFiZWw+CiAgICAgICAgPHNlbGVjdCBpZD0icW8tZXNnLXBhcnQiPjxvcHRpb24+MCU8L29wdGlvbj48b3B0aW9uPk1vaW5zIGRlIDIwJTwvb3B0aW9uPjxvcHRpb24+MjAgw6AgNTAlPC9vcHRpb24+PG9wdGlvbj5QbHVzIGRlIDUwJTwvb3B0aW9uPjwvc2VsZWN0PgogICAgICA8L2Rpdj4KICAgICAgPGRpdiBjbGFzcz0icS1uYXYtYnRucyI+PGJ1dHRvbiBjbGFzcz0iYnRuIGJ0bi1vdXRsaW5lIiBvbmNsaWNrPSJxb05hdig1KSI+4oaQIFByw6ljw6lkZW50PC9idXR0b24+PGJ1dHRvbiBjbGFzcz0iYnRuIGJ0bi1nb2xkIiBvbmNsaWNrPSJxb05hdig3KSI+U3VpdmFudCDihpI8L2J1dHRvbj48L2Rpdj4KICAgIDwvZGl2PgogIDwvZGl2PgoKICA8ZGl2IGNsYXNzPSJxLXNlY3Rpb24iIHN0eWxlPSJkaXNwbGF5Om5vbmUiIGlkPSJxby1zNyI+CiAgICA8ZGl2IGNsYXNzPSJjYXJkIj4KICAgICAgPGRpdiBjbGFzcz0icS10aXRsZSI+OC4gUHJvZmlsIGRlIHJpc3F1ZSAmIFZhbGlkYXRpb248L2Rpdj4KICAgICAgPGRpdiBpZD0icW8tc2NvcmUtcmVzdWx0IiBzdHlsZT0ibWFyZ2luLWJvdHRvbToxNnB4Ij48L2Rpdj4KICAgICAgPGRpdiBzdHlsZT0iZGlzcGxheTpncmlkO2dyaWQtdGVtcGxhdGUtY29sdW1uczpyZXBlYXQoNCwxZnIpO2dhcDoxMHB4O21hcmdpbi1ib3R0b206MTZweCIgaWQ9InFvLXByb2ZpbC1ncmlkIj4KICAgICAgICA8ZGl2IGNsYXNzPSJyYWRpby1vcHQiIHN0eWxlPSJmbGV4LWRpcmVjdGlvbjpjb2x1bW47YWxpZ24taXRlbXM6Y2VudGVyO3RleHQtYWxpZ246Y2VudGVyIj48aW5wdXQgdHlwZT0icmFkaW8iIG5hbWU9InFvLXByb2ZpbCIgdmFsdWU9IlPDqWN1cml0YWlyZSI+PGxhYmVsPjxiPlPDiUNVUklUQUlSRTwvYj48YnI+PHNtYWxsIHN0eWxlPSJjb2xvcjp2YXIoLS1tdXRlZCkiPlJpc3F1ZSBmYWlibGU8L3NtYWxsPjwvbGFiZWw+PC9kaXY+CiAgICAgICAgPGRpdiBjbGFzcz0icmFkaW8tb3B0IiBzdHlsZT0iZmxleC1kaXJlY3Rpb246Y29sdW1uO2FsaWduLWl0ZW1zOmNlbnRlcjt0ZXh0LWFsaWduOmNlbnRlciI+PGlucHV0IHR5cGU9InJhZGlvIiBuYW1lPSJxby1wcm9maWwiIHZhbHVlPSJNb2TDqXLDqSIgY2hlY2tlZD48bGFiZWw+PGI+TU9Ew4lSw4k8L2I+PGJyPjxzbWFsbCBzdHlsZT0iY29sb3I6dmFyKC0tbXV0ZWQpIj5SaXNxdWUgbW9kw6lyw6k8L3NtYWxsPjwvbGFiZWw+PC9kaXY+CiAgICAgICAgPGRpdiBjbGFzcz0icmFkaW8tb3B0IiBzdHlsZT0iZmxleC1kaXJlY3Rpb246Y29sdW1uO2FsaWduLWl0ZW1zOmNlbnRlcjt0ZXh0LWFsaWduOmNlbnRlciI+PGlucHV0IHR5cGU9InJhZGlvIiBuYW1lPSJxby1wcm9maWwiIHZhbHVlPSJEeW5hbWlxdWUiPjxsYWJlbD48Yj5EWU5BTUlRVUU8L2I+PGJyPjxzbWFsbCBzdHlsZT0iY29sb3I6dmFyKC0tbXV0ZWQpIj5SaXNxdWUgaW1wb3J0YW50PC9zbWFsbD48L2xhYmVsPjwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9InJhZGlvLW9wdCIgc3R5bGU9ImZsZXgtZGlyZWN0aW9uOmNvbHVtbjthbGlnbi1pdGVtczpjZW50ZXI7dGV4dC1hbGlnbjpjZW50ZXIiPjxpbnB1dCB0eXBlPSJyYWRpbyIgbmFtZT0icW8tcHJvZmlsIiB2YWx1ZT0iT2ZmZW5zaWYiPjxsYWJlbD48Yj5PRkZFTlNJRjwvYj48YnI+PHNtYWxsIHN0eWxlPSJjb2xvcjp2YXIoLS1tdXRlZCkiPlJpc3F1ZSDDqWxldsOpPC9zbWFsbD48L2xhYmVsPjwvZGl2PgogICAgICA8L2Rpdj4KICAgICAgPGRpdiBjbGFzcz0iZm9ybS1ncm91cCI+PGxhYmVsPkNvbW1lbnRhaXJlIGNvbnNlaWxsZXI8L2xhYmVsPjx0ZXh0YXJlYSBpZD0icW8tY29tbWVudGFpcmUiIHJvd3M9IjMiIHBsYWNlaG9sZGVyPSJPYnNlcnZhdGlvbnMgc3VyIGxlIHByb2ZpbCBjbGllbnQuLi4iPjwvdGV4dGFyZWE+PC9kaXY+CiAgICAgIDxkaXYgY2xhc3M9InEtbmF2LWJ0bnMiPgogICAgICAgIDxidXR0b24gY2xhc3M9ImJ0biBidG4tb3V0bGluZSIgb25jbGljaz0icW9OYXYoNikiPuKGkCBQcsOpY8OpZGVudDwvYnV0dG9uPgogICAgICAgIDxidXR0b24gY2xhc3M9ImJ0biBidG4tZ29sZCIgb25jbGljaz0ibWFya1N0ZXBEb25lKCdxb2JqZWN0aWZzJyk7bmV4dFN0ZXAoJ3FvYmplY3RpZnMnLCdxdWVzdGlvbm5haXJlJykiPuKckyBWYWxpZGVyICYgY29udGludWVyIOKGkjwvYnV0dG9uPgogICAgICA8L2Rpdj4KICAgIDwvZGl2PgogIDwvZGl2Pgo8L2Rpdj4KCg==";
@@ -1202,7 +1202,7 @@ function renderKPIs(){
   if(e('k-progress-sub'))e('k-progress-sub').textContent='vers '+fmt(mv.next);
   // Actions
   var actions=[];
-  var docs=(CLIENT.docs||[]).filter(function(d){return d.status!=='signed';});
+  var docs=(CLIENT.docs||[]).filter(function(d){return d.status==='pending';});
   if(docs.length)actions.push('✍️ '+docs.length+' document(s) à signer');
   var vus=CLIENT.rapportsVus||[];
   var newRap=(CLIENT.rapports||[]).filter(function(r){return vus.indexOf(String(r.id))<0;}).length;
@@ -1301,7 +1301,7 @@ function renderStories(){
     var pctD=h[h.length-2].valeur?Math.round(delta/h[h.length-2].valeur*1000)/10:0;
     cards.push({ico:pctD>=0?'📈':'📉',label:'Performance',title:(pctD>=0?'+':'')+pctD+'% dernière période',page:'reporting'});
   }
-  var docs=(CLIENT.docs||[]).filter(function(d){return d.status!=='signed';});
+  var docs=(CLIENT.docs||[]).filter(function(d){return d.status==='pending';});
   if(docs.length)cards.push({ico:'✍️',label:'À signer',title:docs.length+' document(s)',page:'documents'});
 
   if(!cards.length){el.innerHTML='';return;}
@@ -1321,17 +1321,14 @@ function syncMessages(){
   if(CLIENT.docs){ CLIENT.docs.forEach(function(d){ if(d.status==='to_sign') d.status='pending'; }); }
   Promise.all([jbGet(MSG_BIN).catch(function(){return null;}),fetchPublications()]).then(function(res){
     var data=res[0]||{};
-    var pubs=res[1]||[];
+    var pubs=res[1];
 
     // ── Sync des publications globales du CRM (note/PDF diffusés à tous les clients)
-    var pubIds=new Set((CLIENT.notes||[]).map(function(n){return String(n.id);}));
-    pubs.forEach(function(p){
-      if(!pubIds.has(String(p.id))){
-        if(!CLIENT.notes)CLIENT.notes=[];
-        CLIENT.notes.push(p);
-        pubIds.add(String(p.id));
-      }
-    });
+    // Remplace entièrement la liste locale par celle du CRM à chaque synchro réussie, pour que
+    // les suppressions côté CRM se répercutent aussi côté client (pas seulement les ajouts).
+    // Si la récupération a échoué (pubs===null), on conserve la dernière liste connue plutôt
+    // que de l'effacer à tort.
+    if(pubs!==null) CLIENT.notes = pubs.slice();
 
     var entry=data.messages&&data.messages[k];
     if(!entry){saveLocal();renderNotes();return;}
@@ -1424,30 +1421,26 @@ function syncMessages(){
 // ═══ DOCUMENTS ═══
 function renderDocs(){
   var el=document.getElementById('docs-list');if(!el)return;
-  var docs=(CLIENT.docs||[]).filter(function(d){ return d.status!=='signed'; });
+  var docs=(CLIENT.docs||[]).filter(function(d){ return d.status==='pending'; });
   if(!docs.length){
     el.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text3)">'
       +'<div style="font-size:36px;margin-bottom:12px">📂</div>'
       +'<div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px">Aucun document en attente</div>'
-      +'<div style="font-size:12px;line-height:1.6">Votre conseiller vous enverra des documents à signer depuis le CRM. Vos documents déjà signés se trouvent dans « Mes documents ».</div>'
+      +'<div style="font-size:12px;line-height:1.6">Votre conseiller vous enverra ici les documents à signer. Les documents simples qu\'il vous transmet, ainsi que vos documents déjà signés, se trouvent dans « Mes documents ».</div>'
       +'</div>';
     return;
   }
-  var statusLabel={pending:'⏳ En attente de signature',signed:'✅ Signé','':'📄 Document'};
-  var statusColor={pending:'var(--orange)',signed:'var(--green)','':'var(--text2)'};
   el.innerHTML=docs.map(function(d){
-    var signed=d.status==='signed';
     return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);'
-      +'border:1.5px solid '+(d.status==='pending'?'var(--gold)':signed?'rgba(34,197,94,.3)':'var(--bdr-gold)')+';'
-      +'border-radius:10px;margin-bottom:10px">'
-      +'<div style="font-size:26px;flex-shrink:0">'+(signed?'✅':d.status==='pending'?'📋':'📄')+'</div>'
+      +'border:1.5px solid var(--gold);border-radius:10px;margin-bottom:10px">'
+      +'<div style="font-size:26px;flex-shrink:0">📋</div>'
       +'<div style="flex:1;min-width:0">'
         +'<div style="font-size:13px;font-weight:600;color:var(--text1);margin-bottom:2px">'+escH(d.nom)+'</div>'
         +'<div style="font-size:11px;color:var(--text3)">'+escH(d.date||'')+(d.cat?' · '+escH(d.cat):'')+'</div>'
       +'</div>'
       +'<div style="flex-shrink:0;text-align:right">'
-        +'<div style="font-size:11px;font-weight:600;color:'+(statusColor[d.status]||statusColor[''])+';margin-bottom:6px">'+(statusLabel[d.status]||'')+'</div>'
-        +(d.status==='pending'?'<button onclick="openDocSig(\''+escH(d.id)+'\')" class="btn btn-gold btn-sm" style="font-size:11px;padding:5px 12px">✍️ Signer</button>':'')
+        +'<div style="font-size:11px;font-weight:600;color:var(--orange);margin-bottom:6px">⏳ En attente de signature</div>'
+        +'<button onclick="openDocSig(\''+escH(d.id)+'\')" class="btn btn-gold btn-sm" style="font-size:11px;padding:5px 12px">✍️ Signer</button>'
       +'</div>'
       +'</div>';
   }).join('');
@@ -1455,26 +1448,86 @@ function renderDocs(){
 
 function renderMesDocuments(){
   var el=document.getElementById('mesdocs-list'); if(!el) return;
-  var docs=(CLIENT.docs||[]).filter(function(d){ return d.status==='signed'; });
-  if(!docs.length){
+  var simples=(CLIENT.docs||[]).filter(function(d){ return d.status==='ok'; });
+  var signes=(CLIENT.docs||[]).filter(function(d){ return d.status==='signed'; });
+  if(!simples.length && !signes.length){
     el.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text3)">'
       +'<div style="font-size:36px;margin-bottom:12px">🗂️</div>'
-      +'<div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px">Aucun document signé pour le moment</div>'
-      +'<div style="font-size:12px;line-height:1.6">Une fois vos documents signés depuis « Documents à signer », ils apparaîtront ici.</div>'
+      +'<div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px">Aucun document pour le moment</div>'
+      +'<div style="font-size:12px;line-height:1.6">Les documents transmis par votre conseiller, ainsi que vos documents signés depuis « Documents à signer », apparaîtront ici.</div>'
       +'</div>';
     return;
   }
-  el.innerHTML=docs.map(function(d){
-    return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);'
-      +'border:1.5px solid rgba(34,197,94,.3);border-radius:10px;margin-bottom:10px">'
-      +'<div style="font-size:26px;flex-shrink:0">✅</div>'
-      +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:13px;font-weight:600;color:var(--text1);margin-bottom:2px">'+escH(d.nom)+'</div>'
-        +'<div style="font-size:11px;color:var(--text3)">Signé le '+escH(d.signatureDate||d.date||'')+'</div>'
-      +'</div>'
-      +'<button onclick="clientDownloadSignedPdf(\''+escH(d.id)+'\')" class="btn btn-outline btn-sm" style="font-size:11px" id="dl-btn-'+escH(d.id)+'">⬇ Télécharger le PDF</button>'
-      +'</div>';
-  }).join('');
+  var html='';
+  if(simples.length){
+    html+='<div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin:4px 0 10px">Documents transmis par votre conseiller</div>';
+    html+=simples.map(function(d){
+      return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);'
+        +'border:1.5px solid var(--bdr-gold);border-radius:10px;margin-bottom:10px">'
+        +'<div style="font-size:26px;flex-shrink:0">📄</div>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:13px;font-weight:600;color:var(--text1);margin-bottom:2px">'+escH(d.nom)+'</div>'
+          +'<div style="font-size:11px;color:var(--text3)">'+escH(d.date||'')+(d.cat?' · '+escH(d.cat):'')+'</div>'
+        +'</div>'
+        +'<button onclick="clientDownloadAdminDoc(\''+escH(d.id)+'\')" class="btn btn-outline btn-sm" style="font-size:11px" id="dl-adm-'+escH(d.id)+'">⬇ Télécharger</button>'
+        +'</div>';
+    }).join('');
+  }
+  if(signes.length){
+    html+='<div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin:'+(simples.length?'22px':'4px')+' 0 10px">Documents signés</div>';
+    html+=signes.map(function(d){
+      return '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);'
+        +'border:1.5px solid rgba(34,197,94,.3);border-radius:10px;margin-bottom:10px">'
+        +'<div style="font-size:26px;flex-shrink:0">✅</div>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:13px;font-weight:600;color:var(--text1);margin-bottom:2px">'+escH(d.nom)+'</div>'
+          +'<div style="font-size:11px;color:var(--text3)">Signé le '+escH(d.signatureDate||d.date||'')+'</div>'
+        +'</div>'
+        +'<button onclick="clientDownloadSignedPdf(\''+escH(d.id)+'\')" class="btn btn-outline btn-sm" style="font-size:11px" id="dl-btn-'+escH(d.id)+'">⬇ Télécharger le PDF</button>'
+        +'</div>';
+    }).join('');
+  }
+  el.innerHTML=html;
+}
+
+// Téléchargement d'un document "simple" transmis par le conseiller (pas de signature requise)
+async function clientDownloadAdminDoc(docId){
+  var doc=(CLIENT.docs||[]).find(function(d){return String(d.id)===String(docId);});
+  if(!doc){toast('Document introuvable','error');return;}
+  var btn=document.getElementById('dl-adm-'+docId);
+  if(doc.data){
+    var a0=document.createElement('a'); a0.href=doc.data; a0.download=doc.name||doc.nom||'document';
+    document.body.appendChild(a0); a0.click(); a0.remove();
+    toast('Document téléchargé ✓','success');
+    return;
+  }
+  var chunks=doc.dataChunks;
+  if(!chunks || !chunks.length){ toast('Document non disponible pour le moment — réessayez.','error'); return; }
+  if(btn){ btn.disabled=true; btn.textContent='Récupération…'; }
+  try{
+    var parts=[];
+    for(var i=0;i<chunks.length;i++){
+      var j=null;
+      for(var att=0; att<6; att++){
+        try{ j=await jbGet(chunks[i]); break; }
+        catch(e){ await new Promise(function(r){ setTimeout(r, 700*(att+1)); }); }
+      }
+      if(!j){ toast('Limite JSONBin atteinte — patientez ~30 s puis réessayez.','error'); if(btn){btn.disabled=false;btn.textContent='⬇ Télécharger';} return; }
+      parts.push({i:(j&&j.i!=null?j.i:i), c:(j&&j.c)||''});
+      if(btn) btn.textContent='Récupération ('+(i+1)+'/'+chunks.length+')…';
+    }
+    parts.sort(function(a,b){return a.i-b.i;});
+    var b64=parts.map(function(p){return p.c;}).join('');
+    if(!b64){ toast('Fichier vide ou expiré','error'); if(btn){btn.disabled=false;btn.textContent='⬇ Télécharger';} return; }
+    var bin=atob(b64); var n=bin.length; var u8=new Uint8Array(n); while(n--){u8[n]=bin.charCodeAt(n);}
+    var blob=new Blob([u8],{type:doc.dataMime||'application/pdf'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a'); a.href=url; a.download=doc.name||doc.nom||'document';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ try{URL.revokeObjectURL(url);}catch(_){} }, 8000);
+    toast('Document téléchargé ✓','success');
+  }catch(e){ toast('Erreur : '+e.message,'error'); }
+  if(btn){ btn.disabled=false; btn.textContent='⬇ Télécharger'; }
 }
 
 // Reconstitue le PDF signé à partir des morceaux stockés dans JSONBin (même mécanisme que côté CRM)
@@ -1553,6 +1606,8 @@ function openDocSig(docId){
       +(previewBtn?'<div style="margin-left:auto">'+previewBtn+'</div>':'')
     +'</div>'
     +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px;padding:8px 10px;background:rgba(201,168,76,.06);border-radius:6px;border-left:2px solid var(--gold)">Tracez votre signature dans la zone ci-dessous, puis cliquez "Valider". Le document signé vous sera téléchargeable et sera automatiquement envoyé à votre conseiller.</div>'
+    +'<div style="margin-bottom:10px"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Fait à</label>'
+    +'<input type="text" id="sig-lieu" placeholder="Ville depuis laquelle vous signez" style="width:100%;padding:8px 10px;border:1.5px solid var(--bdr-gold);border-radius:6px;font-size:13px;font-family:inherit;background:var(--bg)"></div>'
     +'<canvas id="sig-canvas" width="600" height="140" style="width:100%;height:140px;cursor:crosshair;background:white;border-radius:6px;border:1.5px solid var(--bdr-gold);display:block"></canvas>'
     +'<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
       +'<button onclick="clearSig()" class="btn btn-outline btn-sm">🗑 Effacer</button>'
@@ -2938,7 +2993,7 @@ function closeSig(){var z=document.getElementById('sig-zone');if(z)z.style.displ
 // ═══ Génération d'un vrai PDF signé (Caremma stylé) + envoi en morceaux vers JSONBin ═══
 // Le CRM (bouton "⬇ PDF signé") s'attend à trouver doc.pdfChunks : un tableau d'ID de bins
 // JSONBin, chacun contenant un morceau du PDF encodé en base64 (limite ~100 Ko par bin).
-async function generateAndUploadSignedPdf(signedDoc, sigData, sigDate){
+async function generateAndUploadSignedPdf(signedDoc, sigData, sigDate, sigLieu){
   if(typeof jspdf==='undefined'){
     console.warn('jsPDF non chargé — PDF signé non généré automatiquement.');
     return;
@@ -2963,8 +3018,8 @@ async function generateAndUploadSignedPdf(signedDoc, sigData, sigDate){
     function newSection(title){ currentSection={title:title||'', rows:[]}; sections.push(currentSection); }
     function pushRow(label, value){
       if(!currentSection) newSection('');
-      var v=(value||'').replace(/\s+/g,' ').trim();
-      var l=(label||'').replace(/\s+/g,' ').trim();
+      var v=(value||'').replace(/\s+/g,' ').replace(/☐/g,'[ ]').replace(/☒/g,'[x]').trim();
+      var l=(label||'').replace(/\s+/g,' ').replace(/☐/g,'[ ]').replace(/☒/g,'[x]').trim();
       if(l||v) currentSection.rows.push({label:l, value:v||'—'});
     }
     function walk(el){
@@ -2989,6 +3044,14 @@ async function generateAndUploadSignedPdf(signedDoc, sigData, sigDate){
         if(child.tagName==='P'){
           var t=child.textContent;
           if(t && t.replace(/\s+/g,'').length) pushRow('', t);
+          continue;
+        }
+        // Div "feuille" sans classe reconnue et sans enfant élément (ex : lignes de cases à
+        // cocher écrites en texte libre) : capturer son texte directement, sinon il était
+        // silencieusement perdu (cause du contenu manquant dans le PDF final signé).
+        if(child.children.length===0){
+          var t2=child.textContent;
+          if(t2 && t2.replace(/\s+/g,'').length) pushRow('', t2);
           continue;
         }
         // Conteneur générique (.sec, .grid, .grid-1, ou div sans classe reconnue) : on descend dedans
@@ -3070,24 +3133,25 @@ async function generateAndUploadSignedPdf(signedDoc, sigData, sigDate){
       y+=6;
     }
     function drawSignatureBanner(){
-      var bannerH=90;
+      var bannerH=sigLieu?100:90;
       ensureSpace(bannerH+10);
       pdf.setDrawColor(GOLD[0],GOLD[1],GOLD[2]); pdf.setFillColor(CREAM[0],CREAM[1],CREAM[2]);
       pdf.roundedRect(marginX, y, pageW-2*marginX, bannerH, 4, 4, 'FD');
       pdf.setFont('times','bold'); pdf.setFontSize(11); pdf.setTextColor(NAVY[0],NAVY[1],NAVY[2]);
       pdf.text('Document signé électroniquement', marginX+12, y+20);
       pdf.setFont('times','normal'); pdf.setFontSize(9); pdf.setTextColor(MUTED[0],MUTED[1],MUTED[2]);
-      pdf.text('Signé par '+(CLIENT.prenom+' '+CLIENT.nom)+' le '+sigDate, marginX+12, y+36);
-      try{ pdf.addImage(sigData,'PNG', marginX+12, y+44, 130, 38); }catch(_imgErr){}
+      var sigLine='Signé par '+(CLIENT.prenom+' '+CLIENT.nom)+(sigLieu?' à '+sigLieu:'')+' le '+sigDate;
+      pdf.text(sigLine, marginX+12, y+36);
+      try{ pdf.addImage(sigData,'PNG', marginX+12, y+(sigLieu?52:44), 130, 38); }catch(_imgErr){}
       y+=bannerH+14;
     }
 
     drawHeader();
-    drawSignatureBanner();
     sections.forEach(function(sec){
       drawSectionTitle(sec.title);
       sec.rows.forEach(function(r){ drawRow(r.label, r.value); });
     });
+    drawSignatureBanner();
 
     var totalPages=pdf.internal.getNumberOfPages();
     for(var p=1;p<=totalPages;p++){ pdf.setPage(p); drawFooter(p,totalPages); }
@@ -3138,8 +3202,9 @@ function confirmSig(){
   if(!ok){toast('Veuillez tracer votre signature','error');return;}
   var sigData=canvas.toDataURL('image/png');
   var sigDate=new Date().toLocaleString('fr-FR');
+  var sigLieu=(document.getElementById('sig-lieu')||{}).value||'';
   var signedDoc=_sigDoc; // keep reference before closeSig clears _sigDoc
-  _sigDoc.signature=sigData;_sigDoc.signatureDate=sigDate;_sigDoc.status='signed';
+  _sigDoc.signature=sigData;_sigDoc.signatureDate=sigDate;_sigDoc.signatureLieu=sigLieu;_sigDoc.status='signed';
   saveLocal();renderDocs();closeSig();
   toast('✅ Document signé — ouverture du récapitulatif...','success');
 
@@ -3163,7 +3228,7 @@ function confirmSig(){
   }).catch(function(){});
 
   // ── Générer le vrai PDF signé (Caremma stylé, correctement typé) et l'envoyer en morceaux vers JSONBin
-  generateAndUploadSignedPdf(signedDoc, sigData, sigDate).then(function(){
+  generateAndUploadSignedPdf(signedDoc, sigData, sigDate, sigLieu).then(function(){
     toast('✅ Document signé et transmis à votre conseiller','success');
   }).catch(function(){
     toast('Document signé — la génération du PDF a rencontré un souci, votre conseiller a été notifié.','');
@@ -3764,7 +3829,7 @@ async function sendEmailJS(serviceId, templateId, params){
 
       <!-- DOCUMENTS -->
       <div class="page" id="pg-documents">
-        <div class="ph"><div class="pt">Documents à signer</div><div class="ps">Déposez, consultez et signez vos documents contractuels</div></div>
+        <div class="ph"><div class="pt">Documents à signer</div><div class="ps">Déposez et signez les documents contractuels en attente</div></div>
         <div class="card">
           <div class="card-title">Déposer un document</div>
           <div class="upload-zone" id="upload-zone"
@@ -3826,7 +3891,7 @@ async function sendEmailJS(serviceId, templateId, params){
 
       <!-- MES DOCUMENTS (signés) -->
       <div class="page" id="pg-mesdocuments">
-        <div class="ph"><div class="pt">Mes documents</div><div class="ps">Retrouvez ici tous vos documents déjà signés</div></div>
+        <div class="ph"><div class="pt">Mes documents</div><div class="ps">Documents transmis par votre conseiller et documents déjà signés</div></div>
         <div id="mesdocs-list"></div>
       </div>
 
