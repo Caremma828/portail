@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <meta name="theme-color" content="#0c1a2e">
 <title>Caremma Finance — Espace Client</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMUUyQjQ3Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMEYxQTMwIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9InVybCgjZykiLz48cmVjdCB4PSI1IiB5PSI1IiB3aWR0aD0iNTQiIGhlaWdodD0iNTQiIHJ4PSIxMSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjQTk4MjNGIiBzdHJva2Utb3BhY2l0eT0iMC42IiBzdHJva2Utd2lkdGg9IjEuNSIvPjx0ZXh0IHg9IjMyIiB5PSIzNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9ImNlbnRyYWwiIGZvbnQtZmFtaWx5PSJHZW9yZ2lhLCdUaW1lcyBOZXcgUm9tYW4nLHNlcmlmIiBmb250LXNpemU9IjI3IiBmb250LXdlaWdodD0iNzAwIiBsZXR0ZXItc3BhY2luZz0iMC41IiBmaWxsPSIjQzlBODRDIj5DRjwvdGV4dD48L3N2Zz4=">
+
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
@@ -47,12 +49,8 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;background:#0
   backdrop-filter:blur(20px);box-shadow:0 32px 80px rgba(0,0,0,0.55);
 }
 .login-brand{text-align:center;margin-bottom:36px}
-.login-mark{
-  width:54px;height:54px;border-radius:14px;margin:0 auto 14px;
-  background:linear-gradient(135deg,var(--gold),var(--gold2));
-  display:flex;align-items:center;justify-content:center;
-  font-size:19px;font-weight:700;color:#0c1a2e;letter-spacing:0.5px;
-}
+.login-mark{width:64px;height:64px;margin:0 auto 14px;filter:drop-shadow(0 6px 18px rgba(0,0,0,.35))}
+.login-mark svg,.tb-mark svg{display:block;width:100%;height:100%}
 .login-name{font-family:'DM Serif Display',serif;font-size:20px;color:var(--gold2);letter-spacing:0.5px}
 .login-orias{font-size:11px;color:var(--text3);letter-spacing:1.2px;text-transform:uppercase;margin-top:4px}
 .login-h{font-family:'DM Serif Display',serif;font-size:24px;font-weight:400;color:var(--text);margin-bottom:8px}
@@ -89,7 +87,7 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;background:#0
   padding:0 24px;flex-shrink:0;backdrop-filter:blur(12px);position:relative;z-index:10;
 }
 .tb-left{display:flex;align-items:center;gap:10px}
-.tb-mark{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,var(--gold),var(--gold2));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0c1a2e}
+.tb-mark{width:34px;height:34px;flex:0 0 auto}
 .tb-name{font-family:'DM Serif Display',serif;font-size:15px;color:var(--gold2)}
 .tb-right{display:flex;align-items:center;gap:12px}
 .tb-greeting{font-size:13px;color:var(--text2)}
@@ -3324,25 +3322,37 @@ function renderPositionsDetail(){
     return sy-sx;
   });
   var colorOf={}; (P.allocation||[]).forEach(function(a){colorOf[a.label]=a.couleur;});
-  var th='font-size:10.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--gold);padding:8px 10px;border-bottom:1px solid var(--bdr-gold);';
-  var h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:520px">'
-    +'<thead><tr><th style="'+th+'text-align:left">Ligne</th><th style="'+th+'text-align:right">Valeur</th><th style="'+th+'text-align:right">Poids</th><th style="'+th+'text-align:right">+/- value</th></tr></thead><tbody>';
+  var th='font-size:10.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--gold);padding:8px 10px;border-bottom:1px solid var(--bdr-gold);white-space:nowrap;';
+  var nf=function(n,d){return (+n).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:d});};
+  var hasQ=pos.some(function(p){return p.quantite!=null;}), hasC=pos.some(function(p){return p.cours!=null;}), hasR=pos.some(function(p){return p.pru!=null;});
+  var cols=1+(hasQ?1:0)+(hasC?1:0)+(hasR?1:0)+3;
+  var h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:'+(hasQ?820:520)+'px">'
+    +'<thead><tr><th style="'+th+'text-align:left">Ligne</th>'
+    +(hasQ?'<th style="'+th+'text-align:right">Quantité</th>':'')
+    +(hasC?'<th style="'+th+'text-align:right">Cours</th>':'')
+    +(hasR?'<th style="'+th+'text-align:right">Prix de revient</th>':'')
+    +'<th style="'+th+'text-align:right">Valeur</th><th style="'+th+'text-align:right">Poids</th><th style="'+th+'text-align:right">+/- value</th></tr></thead><tbody>';
   order.forEach(function(k){
     var arr=groups[k].slice().sort(function(a,b){return (b.valeur||0)-(a.valeur||0);});
     var sv=arr.reduce(function(s,p){return s+(p.valeur||0);},0);
     var sp=arr.reduce(function(s,p){return s+(p.poids||0);},0);
     var col=colorOf[k]||'var(--gold)';
-    h+='<tr><td colspan="4" style="padding:12px 10px 6px;font-weight:600;color:var(--text)"><span class="donut-dot" style="background:'+col+';display:inline-block;margin-right:8px"></span>'
-      +escH(k)+' <span style="color:var(--text3);font-weight:400;margin-left:6px">'+eur(sv)+(sp?' · '+sp.toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})+' %':'')+'</span></td></tr>';
+    h+='<tr><td colspan="'+cols+'" style="padding:12px 10px 6px;font-weight:600;color:var(--text)"><span class="donut-dot" style="background:'+col+';display:inline-block;margin-right:8px"></span>'
+      +escH(k)+' <span style="color:var(--text3);font-weight:400;margin-left:6px">'+eur(sv)+(sp?' · '+sp.toLocaleString('fr-FR',{maximumFractionDigits:1})+' %':'')+'</span></td></tr>';
     arr.forEach(function(p){
       var pn=p.pnlPct, pc=(pn==null)?'var(--text3)':(pn>=0?'var(--green)':'var(--red)');
       var ps=(pn==null)?'—':((pn>=0?'+':'')+(+pn).toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})+' %');
+      var unit=p.coursEnPct?' %':((p.devise&&p.devise!=='EUR')?' '+escH(p.devise):' €');
+      var tdn='padding:8px 10px;text-align:right;color:var(--text2);white-space:nowrap;';
       h+='<tr style="border-bottom:1px solid var(--bdr)">'
         +'<td style="padding:8px 10px;color:#c8d8e8">'+escH(p.nom||'')
-          +(p.type?'<div style="font-size:10.5px;color:var(--text3)">'+escH(p.type)+(p.devise&&p.devise!=='EUR'?' · '+escH(p.devise):'')+(p.echeance?' · éch. '+escH(String(p.echeance))+'':'')+'</div>':'')+'</td>'
-        +'<td style="padding:8px 10px;text-align:right;color:var(--text)">'+eur(p.valeur)+'</td>'
-        +'<td style="padding:8px 10px;text-align:right;color:var(--text2)">'+(p.poids!=null?(+p.poids).toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})+' %':'—')+'</td>'
-        +'<td style="padding:8px 10px;text-align:right;color:'+pc+'">'+ps+'</td></tr>';
+          +'<div style="font-size:10.5px;color:var(--text3)">'+(p.isin?escH(p.isin)+' · ':'')+escH(p.type||'')+(p.devise&&p.devise!=='EUR'?' · '+escH(p.devise):'')+(p.echeance?' · éch. '+escH(String(p.echeance).split('-').reverse().join('/')):'')+'</div></td>'
+        +(hasQ?'<td style="'+tdn+'">'+(p.quantite!=null?nf(p.quantite,2):'—')+'</td>':'')
+        +(hasC?'<td style="'+tdn+'">'+(p.cours!=null?nf(p.cours,2)+unit:'—')+'</td>':'')
+        +(hasR?'<td style="'+tdn+'">'+(p.pru!=null&&p.pru>0?nf(p.pru,2)+unit:'—')+'</td>':'')
+        +'<td style="padding:8px 10px;text-align:right;color:var(--text);white-space:nowrap">'+eur(p.valeur)+'</td>'
+        +'<td style="'+tdn+'">'+(p.poids!=null?(+p.poids).toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})+' %':'—')+'</td>'
+        +'<td style="padding:8px 10px;text-align:right;white-space:nowrap;color:'+pc+'">'+ps+'</td></tr>';
     });
   });
   h+='</tbody></table></div>';
@@ -3766,7 +3776,7 @@ async function sendEmailJS(serviceId, templateId, params){
   <div class="login-bg-glow"></div>
   <div class="login-card">
     <div class="login-brand">
-      <div class="login-mark">CF</div>
+      <div class="login-mark"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Caremma Finance"><defs><linearGradient id="cfgL1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1E2B47"/><stop offset="1" stop-color="#0F1A30"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#cfgL1)"/><rect x="5" y="5" width="54" height="54" rx="11" fill="none" stroke="#A9823F" stroke-opacity="0.6" stroke-width="1.5"/><text x="32" y="34" text-anchor="middle" dominant-baseline="central" font-family="Georgia,'Times New Roman',serif" font-size="27" font-weight="700" letter-spacing="0.5" fill="#C9A84C">CF</text></svg></div>
       <div class="login-name">Caremma Finance</div>
       <div class="login-orias">Conseil en Investissement · ORIAS 24007767</div>
     </div>
@@ -3788,7 +3798,7 @@ async function sendEmailJS(serviceId, templateId, params){
 <div id="setpwd-screen" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:radial-gradient(ellipse at 25% 35%,#1e3558,#0c1a2e);z-index:100">
   <div class="login-card">
     <div class="login-brand">
-      <div class="login-mark">CF</div>
+      <div class="login-mark"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Caremma Finance"><defs><linearGradient id="cfgL2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1E2B47"/><stop offset="1" stop-color="#0F1A30"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#cfgL2)"/><rect x="5" y="5" width="54" height="54" rx="11" fill="none" stroke="#A9823F" stroke-opacity="0.6" stroke-width="1.5"/><text x="32" y="34" text-anchor="middle" dominant-baseline="central" font-family="Georgia,'Times New Roman',serif" font-size="27" font-weight="700" letter-spacing="0.5" fill="#C9A84C">CF</text></svg></div>
       <div class="login-name">Caremma Finance</div>
     </div>
     <div class="login-h">Première connexion</div>
@@ -3806,7 +3816,7 @@ async function sendEmailJS(serviceId, templateId, params){
 <div id="app">
   <div class="topbar">
     <div class="tb-left">
-      <div class="tb-mark">CF</div>
+      <div class="tb-mark"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Caremma Finance"><defs><linearGradient id="cfgT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1E2B47"/><stop offset="1" stop-color="#0F1A30"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="url(#cfgT)"/><rect x="5" y="5" width="54" height="54" rx="11" fill="none" stroke="#A9823F" stroke-opacity="0.6" stroke-width="1.5"/><text x="32" y="34" text-anchor="middle" dominant-baseline="central" font-family="Georgia,'Times New Roman',serif" font-size="27" font-weight="700" letter-spacing="0.5" fill="#C9A84C">CF</text></svg></div>
       <span class="tb-name">Caremma Finance</span>
     </div>
     <div class="tb-right">
