@@ -209,6 +209,17 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;background:#0
 
 /* ═══ Donut allocation d'actifs ═══ */
 .donut-wrap{display:flex;gap:28px;align-items:center;flex-wrap:wrap}
+details.acc{border-top:1px solid var(--bdr)}
+details.acc:first-of-type{border-top:0}
+details.acc>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 2px;user-select:none}
+details.acc>summary::-webkit-details-marker{display:none}
+details.acc>summary::after{content:'';margin-left:auto;flex:0 0 auto;width:8px;height:8px;border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg);transition:transform .2s;margin-top:-3px}
+details.acc[open]>summary::after{transform:rotate(-135deg);margin-top:3px}
+details.acc .acc-t{font-size:11.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--gold)}
+details.acc .acc-s{font-size:12px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+details.acc>summary:hover .acc-t{color:var(--gold2)}
+details.acc .acc-b{padding:4px 2px 18px}
+
 .donut-svg{flex:0 0 auto}
 .donut-legend{display:flex;flex-direction:column;gap:9px;flex:1;min-width:180px}
 .donut-legend-row{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text2);cursor:default;transition:opacity 0.15s}
@@ -3240,34 +3251,104 @@ function confirmSig(){
 // Format attendu (facultatif) : CLIENT.patrimoine.allocation = [{label,valeur,couleur}]
 // Si absent, message d'attente affiché — pas de fausse donnée générée.
 var DONUT_PALETTE=['#c9a84c','#8a9bb0','#5f7a94','#e8d9a8','#4a5d70','#b08a3e'];
-function renderAllocationDonut(){
-  var el=document.getElementById('allocation-donut');if(!el)return;
-  var alloc=(CLIENT.patrimoine&&CLIENT.patrimoine.allocation)||[];
-  if(!alloc.length){
-    el.innerHTML='<div style="text-align:center;padding:26px 10px;color:var(--text3);font-size:12.5px">'
-      +'Allocation d\'actifs non renseignée pour le moment.<br>Votre conseiller la mettra à jour depuis le CRM.</div>';
-    return;
-  }
-  var total=alloc.reduce(function(s,a){return s+(a.valeur||0);},0)||1;
-  var offset=0;
-  var stops=alloc.map(function(a,i){
+function _donutHtml(items, size){
+  var total=items.reduce(function(s,a){return s+(a.valeur||0);},0)||1;
+  var offset=0, sz=size||140, hole=Math.round(sz*0.54), m=Math.round((sz-hole)/2);
+  var stops=items.map(function(a,i){
     var pct=(a.valeur||0)/total*100;
     var col=a.couleur||DONUT_PALETTE[i%DONUT_PALETTE.length];
     var seg=col+' '+offset+'% '+(offset+pct)+'%';
     offset+=pct;
     return seg;
   }).join(',');
-  var legend=alloc.map(function(a,i){
+  var legend=items.map(function(a,i){
     var pct=Math.round((a.valeur||0)/total*1000)/10;
     var col=a.couleur||DONUT_PALETTE[i%DONUT_PALETTE.length];
-    return '<div class="donut-legend-row"><span class="donut-dot" style="background:'+col+'"></span>'+escH(a.label||'')+'<span class="donut-legend-val">'+pct+'%</span></div>';
+    return '<div class="donut-legend-row"><span class="donut-dot" style="background:'+col+'"></span>'+escH(a.label||'')+'<span class="donut-legend-val">'+pct.toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%</span></div>';
   }).join('');
-  el.innerHTML='<div class="donut-wrap">'
-    +'<div class="donut-svg" style="width:140px;height:140px;border-radius:50%;background:conic-gradient('+stops+')">'
-      +'<div style="width:76px;height:76px;border-radius:50%;background:var(--navy2);margin:32px;"></div>'
+  return '<div class="donut-wrap">'
+    +'<div class="donut-svg" style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:conic-gradient('+stops+')">'
+      +'<div style="width:'+hole+'px;height:'+hole+'px;border-radius:50%;background:var(--navy2);margin:'+m+'px;"></div>'
     +'</div>'
     +'<div class="donut-legend">'+legend+'</div>'
     +'</div>';
+}
+
+function renderAllocationDonut(){
+  var el=document.getElementById('allocation-donut');if(!el)return;
+  var P=CLIENT.patrimoine||{};
+  var alloc=P.allocation||[];
+  if(!alloc.length){
+    el.innerHTML='<div style="text-align:center;padding:26px 10px;color:var(--text3);font-size:12.5px">'
+      +'Allocation d\'actifs non renseignée pour le moment.<br>Votre conseiller la mettra à jour depuis le CRM.</div>';
+    return;
+  }
+  /* Rubriques déroulantes : l'état ouvert/fermé est conservé d'un affichage à l'autre */
+  var was={};
+  Array.prototype.forEach.call(el.querySelectorAll('details.acc'),function(d){was[d.getAttribute('data-k')]=d.open;});
+  var isOpen=function(k,def){return (k in was)?was[k]:def;};
+  var pctTxt=function(items,n){
+    var t=items.reduce(function(s,a){return s+(a.valeur||0);},0)||1;
+    return items.slice(0,n||3).map(function(a){return escH(a.label)+' '+(Math.round((a.valeur||0)/t*1000)/10).toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})+' %';}).join(' · ');
+  };
+  var acc=function(k,titre,sous,body,def){
+    return '<details class="acc" data-k="'+k+'"'+(isOpen(k,def)?' open':'')+'><summary><span class="acc-t">'+titre+'</span><span class="acc-s">'+sous+'</span></summary><div class="acc-b">'+body+'</div></details>';
+  };
+  var P_total=alloc.reduce(function(s,a){return s+(a.valeur||0);},0);
+  var h=acc('alloc','Allocation d\'actifs',pctTxt(alloc,3),_donutHtml(alloc,140),true);
+  if(P.allocationDevise&&P.allocationDevise.length) h+=acc('dev','Allocation par devise',pctTxt(P.allocationDevise,3),_donutHtml(P.allocationDevise,120),false);
+  if(P.allocationZone&&P.allocationZone.length) h+=acc('zone','Allocation par zone géographique',pctTxt(P.allocationZone,2),_donutHtml(P.allocationZone,120),false);
+  var npos=(P.positions||[]).length;
+  if(npos) h+=acc('det','Détail du portefeuille',npos+' lignes · '+(+P_total||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}),'<div id="positions-detail"></div>',false);
+  var rel=P.releve;
+  if(rel&&rel.date){
+    h+='<div style="margin-top:14px;font-size:11px;color:var(--text3)">Situation au '+escH(String(rel.date).split('-').reverse().join('/'))
+      +(rel.source?' · source : relevé '+escH(rel.source):'')+'</div>';
+  }
+  el.innerHTML=h;
+  renderPositionsDetail();
+}
+
+function renderPositionsDetail(){
+  var el=document.getElementById('positions-detail');if(!el)return;
+  var P=CLIENT.patrimoine||{};
+  var pos=P.positions||[];
+  var card=null;
+  if(!pos.length){ if(card)card.style.display='none'; el.innerHTML=''; return; }
+  if(card)card.style.display='';
+  var eur=function(n){return (+n||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0});};
+  var groups={}, order=[];
+  pos.forEach(function(p){var k=p.classe||'Autres'; if(!groups[k]){groups[k]=[];order.push(k);} groups[k].push(p);});
+  order.sort(function(x,y){
+    var sx=groups[x].reduce(function(s,p){return s+(p.valeur||0);},0), sy=groups[y].reduce(function(s,p){return s+(p.valeur||0);},0);
+    return sy-sx;
+  });
+  var colorOf={}; (P.allocation||[]).forEach(function(a){colorOf[a.label]=a.couleur;});
+  var th='font-size:10.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--gold);padding:8px 10px;border-bottom:1px solid var(--bdr-gold);';
+  var h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:520px">'
+    +'<thead><tr><th style="'+th+'text-align:left">Ligne</th><th style="'+th+'text-align:right">Valeur</th><th style="'+th+'text-align:right">Poids</th><th style="'+th+'text-align:right">+/- value</th></tr></thead><tbody>';
+  order.forEach(function(k){
+    var arr=groups[k].slice().sort(function(a,b){return (b.valeur||0)-(a.valeur||0);});
+    var sv=arr.reduce(function(s,p){return s+(p.valeur||0);},0);
+    var sp=arr.reduce(function(s,p){return s+(p.poids||0);},0);
+    var col=colorOf[k]||'var(--gold)';
+    h+='<tr><td colspan="4" style="padding:12px 10px 6px;font-weight:600;color:var(--text)"><span class="donut-dot" style="background:'+col+';display:inline-block;margin-right:8px"></span>'
+      +escH(k)+' <span style="color:var(--text3);font-weight:400;margin-left:6px">'+eur(sv)+(sp?' · '+sp.toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})+' %':'')+'</span></td></tr>';
+    arr.forEach(function(p){
+      var pn=p.pnlPct, pc=(pn==null)?'var(--text3)':(pn>=0?'var(--green)':'var(--red)');
+      var ps=(pn==null)?'—':((pn>=0?'+':'')+(+pn).toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})+' %');
+      h+='<tr style="border-bottom:1px solid var(--bdr)">'
+        +'<td style="padding:8px 10px;color:#c8d8e8">'+escH(p.nom||'')
+          +(p.type?'<div style="font-size:10.5px;color:var(--text3)">'+escH(p.type)+(p.devise&&p.devise!=='EUR'?' · '+escH(p.devise):'')+(p.echeance?' · éch. '+escH(String(p.echeance))+'':'')+'</div>':'')+'</td>'
+        +'<td style="padding:8px 10px;text-align:right;color:var(--text)">'+eur(p.valeur)+'</td>'
+        +'<td style="padding:8px 10px;text-align:right;color:var(--text2)">'+(p.poids!=null?(+p.poids).toLocaleString('fr-FR',{minimumFractionDigits:1,maximumFractionDigits:1})+' %':'—')+'</td>'
+        +'<td style="padding:8px 10px;text-align:right;color:'+pc+'">'+ps+'</td></tr>';
+    });
+  });
+  h+='</tbody></table></div>';
+  var rel=P.releve;
+  if(rel&&rel.date) h+='<div style="margin-top:12px;font-size:11px;color:var(--text3)">Données issues du relevé '+escH(rel.source||'')+' du '+escH(String(rel.date).split('-').reverse().join('/'))+'. Les +/- values sont indicatives (avant frais éventuels).</div>';
+  el.innerHTML=h;
 }
 
 // ═══ SIMULATEUR "ET SI..." ═══
@@ -3348,7 +3429,7 @@ function loadReporting(){
       if(entry.profil) CLIENT.profil=entry.profil;
       saveLocal();
       // Attendre que le DOM soit visible avant de dessiner
-      setTimeout(function(){ renderReporting(CLIENT.patrimoine,CLIENT.ptfHistory); renderKPIs(); },100);
+      setTimeout(function(){ renderReporting(CLIENT.patrimoine,CLIENT.ptfHistory); renderKPIs(); try{renderAllocationDonut();}catch(e){} },100);
     } else {
       // Pas de données patrimoine dans JSONBin — afficher message invitation
       var wrap2=document.querySelector('.chart-wrap');
@@ -4003,7 +4084,7 @@ async function sendEmailJS(serviceId, templateId, params){
         <div id="rep-detail"></div>
 
         <div class="card" style="margin-top:16px">
-          <div class="card-title">Allocation d'actifs</div>
+          <div class="card-title">Votre portefeuille</div>
           <div id="allocation-donut"></div>
         </div>
 
