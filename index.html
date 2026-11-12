@@ -208,7 +208,17 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;background:#0
 /* ═══ Donut allocation d'actifs ═══ */
 .donut-wrap{display:flex;gap:28px;align-items:center;flex-wrap:wrap}
 details.acc{border-top:1px solid var(--bdr)}
-details.acc:first-of-type{border-top:0}
+.lv{background:rgba(201,168,76,.07);border:1px solid var(--bdr);border-radius:12px;padding:14px 16px;margin:2px 0 18px}
+.lv-row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.lv-t{font-size:11.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--gold)}
+.lv-v{font-size:28px;font-weight:700;margin-top:2px}
+.lv-d{font-size:13px;margin-top:2px}
+.lv-s{font-size:11.5px;color:var(--text3);margin-top:8px;line-height:1.5}
+.lv-b{background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer}
+.lv-b:hover{background:rgba(201,168,76,.12)}
+.dn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:22px 28px;padding:4px 2px 20px}
+.dn-t{font-size:11.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
+.dn-blk .donut-wrap{flex-wrap:wrap}
 details.acc>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px 2px;user-select:none}
 details.acc>summary::-webkit-details-marker{display:none}
 details.acc>summary::after{content:'';margin-left:auto;flex:0 0 auto;width:8px;height:8px;border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg);transition:transform .2s;margin-top:-3px}
@@ -3293,18 +3303,78 @@ function renderAllocationDonut(){
     return '<details class="acc" data-k="'+k+'"'+(isOpen(k,def)?' open':'')+'><summary><span class="acc-t">'+titre+'</span><span class="acc-s">'+sous+'</span></summary><div class="acc-b">'+body+'</div></details>';
   };
   var P_total=alloc.reduce(function(s,a){return s+(a.valeur||0);},0);
-  var h=acc('alloc','Allocation d\'actifs',pctTxt(alloc,3),_donutHtml(alloc,140),true);
-  if(P.allocationDevise&&P.allocationDevise.length) h+=acc('dev','Allocation par devise',pctTxt(P.allocationDevise,3),_donutHtml(P.allocationDevise,120),false);
-  if(P.allocationZone&&P.allocationZone.length) h+=acc('zone','Allocation par zone géographique',pctTxt(P.allocationZone,2),_donutHtml(P.allocationZone,120),false);
+  var blk=function(titre,items,sz){
+    return '<div class="dn-blk"><div class="dn-t">'+titre+'</div>'+_donutHtml(items,sz)+'</div>';
+  };
+  var blocks=blk('Allocation d\'actifs',alloc,130);
+  if(P.allocationDevise&&P.allocationDevise.length) blocks+=blk('Allocation par devise',P.allocationDevise,130);
+  if(P.allocationZone&&P.allocationZone.length) blocks+=blk('Allocation par zone géographique',P.allocationZone,130);
+  var h='<div id="live-val" class="lv" style="display:none"></div><div class="dn-grid">'+blocks+'</div>';
   var npos=(P.positions||[]).length;
   if(npos) h+=acc('det','Détail du portefeuille',npos+' lignes · '+(+P_total||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}),'<div id="positions-detail"></div>',false);
   var rel=P.releve;
   if(rel&&rel.date){
     h+='<div style="margin-top:14px;font-size:11px;color:var(--text3)">Situation au '+escH(String(rel.date).split('-').reverse().join('/'))
-      +(rel.source?' · source : relevé '+escH(rel.source):'')+'</div>';
+      +(rel.source?' · source : relevé '+escH({SGL:'SG Luxembourg',AURIS:'Auris Gestion'}[rel.source]||rel.source):'')+'</div>';
   }
   el.innerHTML=h;
+  renderLiveVal();
+  try{loadLiveValuation(false);}catch(_e){}
   renderPositionsDetail();
+}
+
+/* ═══ Valorisation estimée (cours de marché différés, via le service Cloudflare de Caremma) ═══ */
+var CARS_WORKER='https://odd-pond-f215caremma-coursendirect.marc-reverseau.workers.dev';
+var LV={key:'',state:'idle'};
+function _lvEligible(p){return !!(p&&p.isin&&p.quantite>0&&!p.coursEnPct&&p.classe!=='Liquidités');}
+function renderLiveVal(){
+  var el=document.getElementById('live-val');if(!el)return;
+  var P=CLIENT.patrimoine||{}, rel=P.releve||{};
+  var eur=function(n){return (+n||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0});};
+  if(LV.state==='loading'){el.style.display='';el.innerHTML='<div class="lv-t">Valorisation estimée</div><div class="lv-s">Mise à jour des cours en cours…</div>';return;}
+  if(LV.state==='ok'){
+    var d=LV.est-LV.rel, pc=LV.rel?d/LV.rel*100:0, up=d>=0;
+    var relD=rel.date?String(rel.date).split('-').reverse().join('/'):'';
+    var hh=LV.at.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}), dd=LV.at.toLocaleDateString('fr-FR');
+    el.style.display='';
+    el.innerHTML='<div class="lv-row"><div><div class="lv-t">Valorisation estimée</div>'
+      +'<div class="lv-v">'+eur(LV.est)+'</div>'
+      +'<div class="lv-d" style="color:'+(up?'#6fcf97':'#eb7a7a')+'">'+(up?'+':'−')+eur(Math.abs(d)).replace(/\s/g,' ')+' ('+(up?'+':'−')+Math.abs(pc).toFixed(2).replace('.',',')+' %)'+(relD?' depuis le relevé du '+relD:'')+'</div></div>'
+      +'<button type="button" class="lv-b" onclick="loadLiveValuation(true)">Actualiser</button></div>'
+      +'<div class="lv-s">Cours de marché différés au '+dd+' à '+hh+' · '+LV.n+' ligne'+(LV.n>1?'s':'')+' sur '+LV.of+' actualisée'+(LV.n>1?'s':'')+'. Les autres lignes (liquidités, produits structurés…) restent à leur valeur du relevé.</div>'
+      +'<div class="lv-s">Estimation indicative, hors relevé officiel de votre établissement. Seule la situation du relevé fait foi'+(relD?' ('+eur(LV.rel)+' au '+relD+')':'')+'.</div>';
+    return;
+  }
+  if(LV.state==='ko'){el.style.display='';el.innerHTML='<div class="lv-t">Valorisation estimée</div><div class="lv-s">Les cours de marché sont momentanément indisponibles. <button type="button" class="lv-b" onclick="loadLiveValuation(true)">Réessayer</button></div>';return;}
+  el.style.display='none';el.innerHTML='';
+}
+async function loadLiveValuation(force){
+  var P=CLIENT.patrimoine||{}, pos=P.positions||[];
+  var key=(CLIENT.email||'')+'|'+((P.releve||{}).date||'')+'|'+pos.length;
+  if(!force&&LV.key===key&&(LV.state==='loading'||LV.state==='ok'||LV.state==='none')) return;
+  var elig=pos.filter(_lvEligible);
+  if(!elig.length){LV={key:key,state:'none'};renderLiveVal();return;}
+  LV={key:key,state:'loading'};renderLiveVal();
+  var quotes={};
+  try{
+    for(var i=0;i<elig.length;i+=10){
+      var ch=elig.slice(i,i+10);
+      var r=await fetch(CARS_WORKER+'/quotes?items='+encodeURIComponent(ch.map(function(p){return p.isin+':'+(p.devise||'');}).join(',')),{cache:'no-store'});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      var j=await r.json();
+      for(var k in (j.quotes||{})) quotes[k]=j.quotes[k];
+    }
+  }catch(e){ console.warn('cours indisponibles',e&&e.message); }
+  if(LV.key!==key) return;                                  /* le client a changé entre-temps */
+  var tot=0, rel=0, n=0;
+  pos.forEach(function(p){
+    var v=+p.valeur||0; rel+=v;
+    var q=quotes[p.isin], e=(_lvEligible(p)&&q&&q.found&&q.priceEur>0)?p.quantite*q.priceEur:null;
+    if(e!=null && v>0 && Math.abs(e/v-1)<0.4){ tot+=e; n++; } else tot+=v;   /* écart > 40 % = rapprochement douteux : on garde le relevé */
+  });
+  if(!n){ LV={key:key,state:'ko'}; }
+  else LV={key:key,state:'ok',est:tot,rel:rel,n:n,of:elig.length,at:new Date()};
+  renderLiveVal();
 }
 
 function renderPositionsDetail(){
