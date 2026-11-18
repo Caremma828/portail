@@ -3324,7 +3324,7 @@ function renderAllocationDonut(){
 }
 
 /* ═══ Valorisation estimée (cours de marché différés, via le service Cloudflare de Caremma) ═══ */
-var CARS_WORKER='https://odd-pond-f215caremma-coursendirect.marc-reverseau.workers.dev';
+var CARS_WORKER=/(^|\.)caremma-hub\.pages\.dev$/.test(location.hostname)?'/api':'https://odd-pond-f215caremma-coursendirect.marc-reverseau.workers.dev';   /* hub en ligne : même service, via l'API protégée du hub */
 var LV={key:'',state:'idle'};
 function _lvEligible(p){return !!(p&&p.isin&&p.quantite>0&&!p.coursEnPct&&p.classe!=='Liquidités');}
 function renderLiveVal(){
@@ -3342,7 +3342,7 @@ function renderLiveVal(){
       +(LV.prev>0?(function(){var dj=LV.est-LV.prev,pj=dj/LV.prev*100,u=dj>=0;return '<div class="lv-d" style="color:'+(u?'#6fcf97':'#eb7a7a')+'"><b>'+(u?'+':'−')+eur(Math.abs(dj)).replace(/\s/g,' ')+' ('+(u?'+':'−')+Math.abs(pj).toFixed(2).replace('.',',')+' %)</b> par rapport à la clôture de la veille</div>';})():'')
       +'<div class="lv-d" style="color:'+(up?'#6fcf97':'#eb7a7a')+';font-size:12px;opacity:.85">'+(up?'+':'−')+eur(Math.abs(d)).replace(/\s/g,' ')+' ('+(up?'+':'−')+Math.abs(pc).toFixed(2).replace('.',',')+' %)'+(relD?' depuis le relevé du '+relD:'')+'</div></div>'
       +'<button type="button" class="lv-b" onclick="loadLiveValuation(true)">Actualiser</button></div>'
-      +'<div class="lv-s">Cours de marché différés au '+dd+' à '+hh+' · '+LV.n+' ligne'+(LV.n>1?'s':'')+' sur '+LV.of+' actualisée'+(LV.n>1?'s':'')+'. Les autres lignes (liquidités, produits structurés…) restent à leur valeur du relevé.</div>'
+      +'<div class="lv-s">'+(LV.nClose&&LV.nClose>=LV.n?'Cours de clôture de la dernière séance (marchés fermés), consultés le '+dd+' à '+hh:'Cours de marché différés au '+dd+' à '+hh+(LV.nClose?' ('+LV.nClose+' ligne'+(LV.nClose>1?'s':'')+' au dernier cours de clôture, marché fermé)':''))+' · '+LV.n+' ligne'+(LV.n>1?'s':'')+' sur '+LV.of+' actualisée'+(LV.n>1?'s':'')+'. Les autres lignes (liquidités, produits structurés…) restent à leur valeur du relevé.</div>'
       +'<div class="lv-s">Estimation indicative, hors relevé officiel de votre établissement. Seule la situation du relevé fait foi'+(relD?' ('+eur(LV.rel)+' au '+relD+')':'')+'.</div>';
     return;
   }
@@ -3360,21 +3360,23 @@ async function loadLiveValuation(force){
   try{
     for(var i=0;i<elig.length;i+=10){
       var ch=elig.slice(i,i+10);
-      var r=await fetch(CARS_WORKER+'/quotes?items='+encodeURIComponent(ch.map(function(p){return p.isin+':'+(p.devise||'');}).join(',')),{cache:'no-store'});
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      var j=await r.json();
-      for(var k in (j.quotes||{})) quotes[k]=j.quotes[k];
+      var u=CARS_WORKER+'/quotes?items='+encodeURIComponent(ch.map(function(p){return p.isin+':'+(p.devise||'');}).join(','));
+      for(var att=0;att<2;att++){                              /* un paquet en échec n'empêche pas les autres ; une seconde tentative */
+        try{ var r=await fetch(u,{cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status);
+          var j=await r.json(); for(var k in (j.quotes||{})) quotes[k]=j.quotes[k]; break;
+        }catch(e1){ if(att) console.warn('cours indisponibles',e1&&e1.message); else await new Promise(function(res){setTimeout(res,800);}); }
+      }
     }
   }catch(e){ console.warn('cours indisponibles',e&&e.message); }
   if(LV.key!==key) return;                                  /* le client a changé entre-temps */
-  var tot=0, rel=0, n=0, prevTot=0, maxTs=0;
+  var tot=0, rel=0, n=0, prevTot=0, maxTs=0, nClose=0, nPrev=0, nowS=Date.now()/1000;
   pos.forEach(function(p){
     var v=+p.valeur||0; rel+=v;
     var q=quotes[p.isin], e=(_lvEligible(p)&&q&&q.found&&q.priceEur>0)?p.quantite*q.priceEur:null;
-    if(e!=null && v>0 && Math.abs(e/v-1)<0.4){ tot+=e; n++; prevTot+=(q.prevPriceEur>0?p.quantite*q.prevPriceEur:e); if(q.ts>maxTs)maxTs=q.ts; } else { tot+=v; prevTot+=v; }   /* écart > 40 % = rapprochement douteux : on garde le relevé */
+    if(e!=null && v>0 && Math.abs(e/v-1)<0.4){ tot+=e; n++; prevTot+=(q.prevPriceEur>0?p.quantite*q.prevPriceEur:e); if(q.prevPriceEur>0) nPrev++; if(q.ts>maxTs)maxTs=q.ts; if(!(q.ts>0)||nowS-q.ts>1800) nClose++; } else { tot+=v; prevTot+=v; }   /* écart > 40 % = rapprochement douteux : on garde le relevé */
   });
   if(!n){ LV={key:key,state:'ko'}; }
-  else LV={key:key,state:'ok',est:tot,rel:rel,n:n,of:elig.length,at:new Date(),prev:prevTot,sess:(maxTs?new Date(maxTs*1000):new Date()).toLocaleDateString('sv-SE',{timeZone:'Europe/Paris'})};
+  else LV={key:key,state:'ok',est:tot,rel:rel,n:n,of:elig.length,at:new Date(),nClose:nClose,prev:(nPrev>=n*0.8?prevTot:0),sess:(maxTs?new Date(maxTs*1000):new Date()).toLocaleDateString('sv-SE',{timeZone:'Europe/Paris'})};
   renderLiveVal();
   try{ if(window._pendingHistory&&document.getElementById('ptf-chart')) drawChart(window._pendingHistory); }catch(_e){}
 }
