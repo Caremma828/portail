@@ -3339,7 +3339,8 @@ function renderLiveVal(){
     el.style.display='';
     el.innerHTML='<div class="lv-row"><div><div class="lv-t">Valorisation estimée</div>'
       +'<div class="lv-v">'+eur(LV.est)+'</div>'
-      +'<div class="lv-d" style="color:'+(up?'#6fcf97':'#eb7a7a')+'">'+(up?'+':'−')+eur(Math.abs(d)).replace(/\s/g,' ')+' ('+(up?'+':'−')+Math.abs(pc).toFixed(2).replace('.',',')+' %)'+(relD?' depuis le relevé du '+relD:'')+'</div></div>'
+      +(LV.prev>0?(function(){var dj=LV.est-LV.prev,pj=dj/LV.prev*100,u=dj>=0;return '<div class="lv-d" style="color:'+(u?'#6fcf97':'#eb7a7a')+'"><b>'+(u?'+':'−')+eur(Math.abs(dj)).replace(/\s/g,' ')+' ('+(u?'+':'−')+Math.abs(pj).toFixed(2).replace('.',',')+' %)</b> par rapport à la clôture de la veille</div>';})():'')
+      +'<div class="lv-d" style="color:'+(up?'#6fcf97':'#eb7a7a')+';font-size:12px;opacity:.85">'+(up?'+':'−')+eur(Math.abs(d)).replace(/\s/g,' ')+' ('+(up?'+':'−')+Math.abs(pc).toFixed(2).replace('.',',')+' %)'+(relD?' depuis le relevé du '+relD:'')+'</div></div>'
       +'<button type="button" class="lv-b" onclick="loadLiveValuation(true)">Actualiser</button></div>'
       +'<div class="lv-s">Cours de marché différés au '+dd+' à '+hh+' · '+LV.n+' ligne'+(LV.n>1?'s':'')+' sur '+LV.of+' actualisée'+(LV.n>1?'s':'')+'. Les autres lignes (liquidités, produits structurés…) restent à leur valeur du relevé.</div>'
       +'<div class="lv-s">Estimation indicative, hors relevé officiel de votre établissement. Seule la situation du relevé fait foi'+(relD?' ('+eur(LV.rel)+' au '+relD+')':'')+'.</div>';
@@ -3366,15 +3367,16 @@ async function loadLiveValuation(force){
     }
   }catch(e){ console.warn('cours indisponibles',e&&e.message); }
   if(LV.key!==key) return;                                  /* le client a changé entre-temps */
-  var tot=0, rel=0, n=0;
+  var tot=0, rel=0, n=0, prevTot=0, maxTs=0;
   pos.forEach(function(p){
     var v=+p.valeur||0; rel+=v;
     var q=quotes[p.isin], e=(_lvEligible(p)&&q&&q.found&&q.priceEur>0)?p.quantite*q.priceEur:null;
-    if(e!=null && v>0 && Math.abs(e/v-1)<0.4){ tot+=e; n++; } else tot+=v;   /* écart > 40 % = rapprochement douteux : on garde le relevé */
+    if(e!=null && v>0 && Math.abs(e/v-1)<0.4){ tot+=e; n++; prevTot+=(q.prevPriceEur>0?p.quantite*q.prevPriceEur:e); if(q.ts>maxTs)maxTs=q.ts; } else { tot+=v; prevTot+=v; }   /* écart > 40 % = rapprochement douteux : on garde le relevé */
   });
   if(!n){ LV={key:key,state:'ko'}; }
-  else LV={key:key,state:'ok',est:tot,rel:rel,n:n,of:elig.length,at:new Date()};
+  else LV={key:key,state:'ok',est:tot,rel:rel,n:n,of:elig.length,at:new Date(),prev:prevTot,sess:(maxTs?new Date(maxTs*1000):new Date()).toLocaleDateString('sv-SE',{timeZone:'Europe/Paris'})};
   renderLiveVal();
+  try{ if(window._pendingHistory&&document.getElementById('ptf-chart')) drawChart(window._pendingHistory); }catch(_e){}
 }
 
 function renderPositionsDetail(){
@@ -3545,6 +3547,24 @@ function renderReporting(p,history){
   }
 }
 
+function lvChartPoints(h){
+  if(!h||h.length<2||LV.state!=='ok') return [];
+  var lastV=+h[h.length-1].valeur||0;
+  if(!(lastV>0)||Math.abs(LV.rel/lastV-1)>0.05) return [];      /* historique et relevé incohérents : pas de point estimé */
+  var P=CLIENT.patrimoine||{}, rd=(P.releve&&P.releve.date)||'', pts={};
+  (P.estHist||[]).forEach(function(e){ if(e&&e.date>rd&&e.valeur>0) pts[e.date]=e.valeur; });   /* valeurs quotidiennes mémorisées par le CRM */
+  pts[LV.sess]=LV.est;
+  return Object.keys(pts).sort().map(function(d){var p=d.split('-');return {date:p[2]+'/'+p[1],valeur:pts[d],_est:true};});
+}
+function lvChartNote(canvas,lp,base){
+  var host=canvas&&canvas.parentNode&&canvas.parentNode.parentNode; if(!host) return;
+  var nb=document.getElementById('ptf-est-note');
+  if(!nb){nb=document.createElement('div');nb.id='ptf-est-note';nb.style.cssText='font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5';host.appendChild(nb);}
+  if(!lp){nb.innerHTML='';return;}
+  var pc=(lp.valeur-base)/base*100;
+  nb.innerHTML='◇ Dernier point = <b>estimation</b> : '+fmt(lp.valeur)+' le '+LV.at.toLocaleDateString('fr-FR')+' à '+LV.at.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})
+    +' (cours de marché différés). Performance estimée depuis le premier point : <b>'+(pc>=0?'+':'−')+Math.abs(pc).toFixed(2).replace('.',',')+' %</b>. Indicatif, hors relevé officiel.';
+}
 function drawChart(history){
   if(history&&history.length) window._pendingHistory=history;
   var h = window._pendingHistory||[];
@@ -3564,7 +3584,11 @@ function drawChart(history){
   canvas.removeAttribute('width');
   canvas.removeAttribute('height');
 
+  var lps=[]; try{lps=lvChartPoints(h);}catch(_e){}
+  var m0=h.length, lp=lps.length?lps[lps.length-1]:null;
+  if(lps.length){ h=h.concat(lps); }
   var base = h[0].valeur||1;
+  try{lvChartNote(canvas,lp,base);}catch(_e){}
   var perfs = h.map(function(x){ return parseFloat(((x.valeur-base)/base*100).toFixed(2)); });
 
   if(window._ptfChart){try{window._ptfChart.destroy();}catch(e){} window._ptfChart=null;}
@@ -3580,8 +3604,11 @@ function drawChart(history){
           borderColor:'#c9a84c',
           backgroundColor:'rgba(201,168,76,0.1)',
           borderWidth:2.5,
-          pointBackgroundColor:'#e8c96a',
-          pointRadius:4,
+          pointBackgroundColor:h.map(function(x,i){return (i>=m0&&lps.length)?'#0F1A30':'#e8c96a';}),
+          pointBorderColor:'#e8c96a', pointBorderWidth:2,
+          pointRadius:h.map(function(x,i){return (i>=m0&&lps.length)?6:4;}),
+          pointStyle:h.map(function(x,i){return (i>=m0&&lps.length)?'rectRot':'circle';}),
+          segment:{borderDash:function(c){return (lps.length&&c.p1DataIndex>=m0)?[6,5]:undefined;}},
           pointHoverRadius:6,
           fill:true,
           tension:0.3,
@@ -3609,7 +3636,7 @@ function drawChart(history){
       plugins:{
         legend:{display:true,position:'top',labels:{color:'rgba(200,216,232,0.8)',font:{size:11},usePointStyle:true}},
         tooltip:{callbacks:{label:function(c){
-          if(c.dataset.yAxisID==='yVal') return ' '+fmt(c.parsed.y);
+          if(c.dataset.yAxisID==='yVal') return ' '+fmt(c.parsed.y)+((lps.length&&c.dataIndex>=m0)?' (estimation)':'');
           return ' '+(c.parsed.y>=0?'+':'')+c.parsed.y.toFixed(2)+'%';
         }}}
       },
