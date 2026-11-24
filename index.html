@@ -1385,6 +1385,12 @@ function syncMessages(){
       });
     }
 
+    // ── Documents supprimés par le conseiller depuis le CRM
+    if(entry.deletedDocs&&entry.deletedDocs.length){
+      var _dd=entry.deletedDocs.map(String);
+      CLIENT.docs=(CLIENT.docs||[]).filter(function(d){return _dd.indexOf(String(d.id))<0;});
+    }
+
     // ── Sync rapports/documents consultables envoyés par le conseiller
     if(entry.rapports){
       var remoteRap=entry.rapports;
