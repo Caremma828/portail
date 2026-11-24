@@ -1347,7 +1347,7 @@ function syncMessages(){
     // les suppressions côté CRM se répercutent aussi côté client (pas seulement les ajouts).
     // Si la récupération a échoué (pubs===null), on conserve la dernière liste connue plutôt
     // que de l'effacer à tort.
-    if(pubs!==null) CLIENT.notes = pubs.slice();
+    if(pubs!==null){ var _me=(CLIENT.email||'').toLowerCase(); CLIENT.notes = pubs.filter(function(p){ var d=p&&p.clients; if(!d||!d.length) return true; return d.map(function(x){return String(x).toLowerCase();}).indexOf(_me)>=0; }); }
 
     var entry=data.messages&&data.messages[k];
     if(!entry){saveLocal();renderNotes();return;}
