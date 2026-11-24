@@ -4479,9 +4479,13 @@ async function cfSendCode(resend){
   var code=String(Math.floor(100000+Math.random()*900000));
   try{
     toast('Envoi du code…','');
-    await sendEmailJS(EJS_SERVICE_SIG,EJS_TPL_SIG,{ to_email:CLIENT.email, to_name:((CLIENT.prenom||'')+' '+(CLIENT.nom||'')).trim(), from_name:'Caremma Finance', reply_to:CF_SIG_ADVISOR,
-      client_prenom:CLIENT.prenom||'', access_code:code, subject:'Votre code de signature — Caremma Finance',
-      message:'Votre code pour signer « '+(doc.nom||'document')+' » : '+code+' (valable 10 minutes). Si vous n’êtes pas à l’origine de cette demande, ignorez ce message.' });
+    var _e=function(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+    var _hb='<p style="font-size:16px;color:#1B2A41;font-weight:bold;margin:0 0 14px">Bonjour '+_e(CLIENT.prenom||'')+',</p>'
+      +'<p style="margin:0 0 16px">Voici votre code pour signer électroniquement le document « <strong>'+_e(doc.nom||'document')+'</strong> » dans votre espace client Caremma Finance :</p>'
+      +'<div style="background:#F4F2EC;border:1px solid #E4DFD5;border-radius:8px;padding:18px;text-align:center;margin:0 0 18px"><div style="font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Votre code de signature</div><div style="font-size:30px;font-weight:bold;letter-spacing:6px;color:#1B2A41;font-family:Courier New,monospace">'+code+'</div><div style="font-size:11px;color:#8A8578;margin-top:8px">Valable 10 minutes · Ne communiquez ce code à personne</div></div>'
+      +'<p style="margin:0 0 6px;font-size:13px;color:#6B7280">Si vous n’êtes pas à l’origine de cette demande, ignorez simplement ce message.</p>';
+    await sendEmailJS('service_hp5456h','template_v56dw5r',{ to_email:CLIENT.email, to_name:((CLIENT.prenom||'')+' '+(CLIENT.nom||'')).trim(), from_name:'Caremma Finance', reply_to:CF_SIG_ADVISOR,
+      client_prenom:CLIENT.prenom||'', subject:'Votre code de signature — Caremma Finance', html_body:_hb, message:'' });
     CF_SIG.code=code; CF_SIG.codeSentAt=Date.now(); CF_SIG.codeTo=CLIENT.email; CF_SIG.tries=0;
     toast('Code envoyé ✓','success'); cfSigRender();
     setTimeout(function(){ var i=document.getElementById('cf-code'); if(i) i.focus(); },100);
