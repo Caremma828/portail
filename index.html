@@ -4208,3 +4208,411 @@ async function sendEmailJS(serviceId, templateId, params){
           <div id="simulateur"></div>
         </div>
       </div>
+<script>
+async function cfHtmlPdfB64(signedDoc, sigData, sigDate, sigLieu){
+  if(typeof jspdf==='undefined'){
+    console.warn('jsPDF non chargé — PDF signé non généré automatiquement.');
+    return;
+  }
+  try{
+    // 1) Extraire le contenu structuré du document (déjà généré par le CRM) via parsing DOM —
+    // aucune capture d'écran, donc aucun risque de page blanche liée au rendu du navigateur.
+    var parser=new DOMParser();
+    var doc=parser.parseFromString(signedDoc.html||'', 'text/html');
+    var docTitleEl=doc.querySelector('.doc-title');
+    var docInfoEl=doc.querySelector('.doc-info');
+    var docTitle=docTitleEl?docTitleEl.textContent.trim():(signedDoc.nom||'Document');
+    var docInfo=docInfoEl?docInfoEl.textContent.replace(/\s+/g,' ').trim():'';
+
+    // Extraction récursive, indépendante de la structure exacte : certains documents du CRM
+    // enveloppent chaque section dans un conteneur .sec (Questionnaire Objectifs, Connaissance),
+    // d'autres placent .sec-title directement au même niveau que les lignes qui suivent
+    // (Entrée en relation, Déclaration d'adéquation). Cette version gère les deux cas, ainsi
+    // que les paragraphes de texte libre et les lignes de case à cocher.
+    var sections=[];
+    var currentSection=null;
+    function newSection(title){ currentSection={title:title||'', rows:[]}; sections.push(currentSection); }
+    function pushRow(label, value){
+      if(!currentSection) newSection('');
+      var v=(value||'').replace(/\s+/g,' ').replace(/☐/g,'[ ]').replace(/☒/g,'[x]').trim();
+      var l=(label||'').replace(/\s+/g,' ').replace(/☐/g,'[ ]').replace(/☒/g,'[x]').trim();
+      if(l||v) currentSection.rows.push({label:l, value:v||'—'});
+    }
+    function walk(el){
+      var children=el.children; if(!children) return;
+      for(var i=0;i<children.length;i++){
+        var child=children[i];
+        var cls=child.className||'';
+        if(typeof cls!=='string') cls='';
+        if(cls.indexOf('sec-title')>=0){
+          newSection(child.textContent.trim());
+          continue;
+        }
+        if(cls.indexOf('row')>=0 && (cls.indexOf('chk-row')<0)){
+          var lbl=child.querySelector('.lbl'); var val=child.querySelector('.val');
+          pushRow(lbl?lbl.textContent:'', val?val.textContent:'');
+          continue;
+        }
+        if(cls.indexOf('chk-row')>=0){
+          pushRow('', '[ ] '+child.textContent);
+          continue;
+        }
+        if(child.tagName==='P'){
+          var t=child.textContent;
+          if(t && t.replace(/\s+/g,'').length) pushRow('', t);
+          continue;
+        }
+        // Div "feuille" sans classe reconnue et sans enfant élément (ex : lignes de cases à
+        // cocher écrites en texte libre) : capturer son texte directement, sinon il était
+        // silencieusement perdu (cause du contenu manquant dans le PDF final signé).
+        if(child.children.length===0){
+          var t2=child.textContent;
+          if(t2 && t2.replace(/\s+/g,'').length) pushRow('', t2);
+          continue;
+        }
+        // Conteneur générique (.sec, .grid, .grid-1, ou div sans classe reconnue) : on descend dedans
+        walk(child);
+      }
+    }
+    var rootEl=doc.querySelector('.body')||doc.body;
+    walk(rootEl);
+    // Repli ultime : si vraiment rien n'a été extrait, prendre tout le texte brut du corps
+    if(!sections.length || sections.every(function(s){return !s.rows.length;})){
+      var raw2=(rootEl.textContent||'').replace(/\s+/g,' ').trim();
+      if(raw2){ sections=[{title:'Contenu du document', rows:[{label:'', value:raw2}]}]; }
+    }
+
+    // 2) Construire le PDF avec l'API de dessin natif de jsPDF (texte + formes vectorielles)
+    var NAVY=[15,30,53], GOLD=[201,168,76], TEXT=[26,26,46], MUTED=[90,106,122], CREAM=[253,249,238];
+    var pdf=new jspdf.jsPDF('p','pt','a4');
+    var pageW=595.28, pageH=841.89, marginX=40, marginTop=40, marginBottom=50;
+    var y=marginTop;
+
+    function drawHeader(){
+      pdf.setFillColor(NAVY[0],NAVY[1],NAVY[2]);
+      pdf.rect(0,0,pageW,54,'F');
+      pdf.setTextColor(GOLD[0],GOLD[1],GOLD[2]);
+      pdf.setFont('times','bold'); pdf.setFontSize(13);
+      pdf.text('CAREMMA FINANCE', marginX, 24);
+      pdf.setFont('times','normal'); pdf.setFontSize(7.5);
+      pdf.setTextColor(200,205,215);
+      pdf.text("Conseil en Investissement · ORIAS N°24007767 · Maisons-Laffitte", marginX, 36);
+      pdf.setFont('times','bold'); pdf.setFontSize(10.5); pdf.setTextColor(GOLD[0],GOLD[1],GOLD[2]);
+      pdf.text(docTitle, pageW-marginX, 24, {align:'right'});
+      pdf.setFont('times','normal'); pdf.setFontSize(7.5); pdf.setTextColor(200,205,215);
+      pdf.text(docInfo, pageW-marginX, 36, {align:'right'});
+      pdf.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
+      pdf.rect(0,54,pageW,2.5,'F');
+      y=54+2.5+16;
+    }
+    function drawFooter(pageNum,totalPages){
+      pdf.setFillColor(NAVY[0],NAVY[1],NAVY[2]);
+      pdf.rect(0,pageH-26,pageW,26,'F');
+      pdf.setFont('times','normal'); pdf.setFontSize(7);
+      pdf.setTextColor(180,188,198);
+      pdf.text('Document confidentiel · Caremma Finance', marginX, pageH-11);
+      pdf.text('Page '+pageNum+' / '+totalPages, pageW-marginX, pageH-11, {align:'right'});
+    }
+    function ensureSpace(neededHeight){
+      if(y+neededHeight > pageH-marginBottom){
+        pdf.addPage();
+        drawHeader();
+      }
+    }
+    function drawSectionTitle(title){
+      if(!title) return;
+      ensureSpace(24);
+      pdf.setFillColor(NAVY[0],NAVY[1],NAVY[2]);
+      pdf.rect(marginX, y, pageW-2*marginX, 18, 'F');
+      pdf.setFont('times','bold'); pdf.setFontSize(9); pdf.setTextColor(GOLD[0],GOLD[1],GOLD[2]);
+      pdf.text(title.toUpperCase(), marginX+8, y+12.5);
+      y+=18+8;
+    }
+    function drawRow(label, value){
+      var contentWidth=pageW-2*marginX-16;
+      var valueLines=pdf.setFont('times','bold').setFontSize(9.5).splitTextToSize(value||'—', contentWidth);
+      var lblHeight=label?11:0;
+      var valHeight=valueLines.length*11+4;
+      var rowHeight=lblHeight+valHeight+8;
+      ensureSpace(rowHeight);
+      var rowStartY=y;
+      if(label){
+        pdf.setFont('times','italic'); pdf.setFontSize(7.5); pdf.setTextColor(MUTED[0],MUTED[1],MUTED[2]);
+        pdf.text(label, marginX+8, y+8);
+        y+=lblHeight;
+      }
+      pdf.setFont('times','bold'); pdf.setFontSize(9.5); pdf.setTextColor(TEXT[0],TEXT[1],TEXT[2]);
+      pdf.text(valueLines, marginX+8, y+9);
+      y+=valHeight;
+      pdf.setDrawColor(230,230,230);
+      pdf.line(marginX, y+2, pageW-marginX, y+2);
+      y+=6;
+    }
+    function drawSignatureBanner(){
+      var bannerH=sigLieu?100:90;
+      ensureSpace(bannerH+10);
+      pdf.setDrawColor(GOLD[0],GOLD[1],GOLD[2]); pdf.setFillColor(CREAM[0],CREAM[1],CREAM[2]);
+      pdf.roundedRect(marginX, y, pageW-2*marginX, bannerH, 4, 4, 'FD');
+      pdf.setFont('times','bold'); pdf.setFontSize(11); pdf.setTextColor(NAVY[0],NAVY[1],NAVY[2]);
+      pdf.text('Document signé électroniquement', marginX+12, y+20);
+      pdf.setFont('times','normal'); pdf.setFontSize(9); pdf.setTextColor(MUTED[0],MUTED[1],MUTED[2]);
+      var sigLine='Signé par '+(CLIENT.prenom+' '+CLIENT.nom)+(sigLieu?' à '+sigLieu:'')+' le '+sigDate;
+      pdf.text(sigLine, marginX+12, y+36);
+      try{ pdf.addImage(sigData,'PNG', marginX+12, y+(sigLieu?52:44), 130, 38); }catch(_imgErr){}
+      y+=bannerH+14;
+    }
+
+    drawHeader();
+    sections.forEach(function(sec){
+      drawSectionTitle(sec.title);
+      sec.rows.forEach(function(r){ drawRow(r.label, r.value); });
+    });
+    drawSignatureBanner();
+
+    var totalPages=pdf.internal.getNumberOfPages();
+    for(var p=1;p<=totalPages;p++){ pdf.setPage(p); drawFooter(p,totalPages); }
+
+    var b64=pdf.output('datauristring').split(',')[1];
+    return b64||null;
+  }catch(e){ console.warn('PDF HTML :', e.message); return null; }
+}
+/* ===== Signature électronique renforcée (v2) — document original + code email + consentement + certificat de preuve ===== */
+var CF_SIG={ doc:null, viewed:false, code:null, codeSentAt:0, codeTo:'', tries:0, verifiedAt:null, consentAt:null, ctx:null, drawing:false, busy:false };
+var CF_SIG_ADVISOR='marc.reverseau@caremmafinance.com';
+var CF_LOGO_PNG='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';
+
+function _cfLoadScript(src){ return new Promise(function(res,rej){ var s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=function(){ rej(new Error('chargement '+src)); }; document.head.appendChild(s); }); }
+async function _cfPdfLib(){ if(window.PDFLib) return window.PDFLib; await _cfLoadScript('https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js'); return window.PDFLib; }
+function _cfB64ToBytes(b64){ var pure=String(b64||''); var ci=pure.indexOf('base64,'); if(ci>=0) pure=pure.slice(ci+7); var bin=atob(pure.replace(/\s/g,'')); var u=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
+function _cfBytesToB64(u8){ var s=''; var CH=0x8000; for(var i=0;i<u8.length;i+=CH){ s+=String.fromCharCode.apply(null, u8.subarray(i,i+CH)); } return btoa(s); }
+async function _cfSha256(bytes){ try{ var h=await crypto.subtle.digest('SHA-256', bytes); return Array.from(new Uint8Array(h)).map(function(b){return b.toString(16).padStart(2,'0');}).join(''); }catch(e){ return 'indisponible'; } }
+function _cfIsPdf(doc){ var m=(doc.dataMime||'')+' '+(doc.data?String(doc.data).slice(0,40):'')+' '+(doc.nom||doc.name||''); return /pdf/i.test(m); }
+function _cfNow(){ var d=new Date(); return { local:d.toLocaleString('fr-FR',{timeZone:'Europe/Paris'}), iso:d.toISOString() }; }
+
+async function _cfOriginalBytes(doc){
+  if(doc.data) return _cfB64ToBytes(doc.data);
+  var chunks=doc.dataChunks; if(!chunks||!chunks.length) return null;
+  var parts=[];
+  for(var i=0;i<chunks.length;i++){
+    var j=null;
+    for(var att=0;att<6;att++){ try{ j=await jbGet(chunks[i]); break; }catch(e){ await new Promise(function(r){ setTimeout(r,700*(att+1)); }); } }
+    if(!j) throw new Error('Document momentanément indisponible, réessayez dans 30 secondes.');
+    parts.push({i:(j.i!=null?j.i:i), c:j.c||''});
+  }
+  parts.sort(function(a,b){return a.i-b.i;});
+  return _cfB64ToBytes(parts.map(function(p){return p.c;}).join(''));
+}
+
+async function cfOpenSigDoc(){
+  var doc=CF_SIG.doc; if(!doc) return;
+  try{
+    if(doc.html && !doc.data && !doc.dataChunks){ openDocHtmlPreview(String(doc.id)); }
+    else{
+      toast('Ouverture du document…','');
+      var bytes=await _cfOriginalBytes(doc); if(!bytes) throw new Error('Document introuvable');
+      var url=URL.createObjectURL(new Blob([bytes],{type:_cfIsPdf(doc)?'application/pdf':(doc.dataMime||'application/octet-stream')}));
+      window.open(url,'_blank'); setTimeout(function(){ try{URL.revokeObjectURL(url);}catch(_){} },60000);
+    }
+    CF_SIG.viewed=true; cfSigRender();
+  }catch(e){ toast(e.message||'Erreur','error'); }
+}
+
+function openDocSig(docId){
+  var doc=(CLIENT.docs||[]).find(function(d){return String(d.id)===String(docId);});
+  if(!doc){toast('Document introuvable','error');return;}
+  CF_SIG={ doc:doc, viewed:false, code:null, codeSentAt:0, codeTo:'', tries:0, verifiedAt:null, consentAt:null, ctx:null, drawing:false, busy:false };
+  _sigDoc=doc;
+  var z=document.getElementById('sig-zone'); if(!z){toast('Zone de signature introuvable','error');return;}
+  z.style.display='block'; cfSigRender(); z.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function closeSig(){ var z=document.getElementById('sig-zone'); if(z){ z.style.display='none'; z.innerHTML=''; } _sigDoc=null; CF_SIG.doc=null; CF_SIG.code=null; }
+
+function _cfStep(n,title,state,body){
+  var col=state==='done'?'var(--green)':(state==='on'?'var(--gold)':'var(--text3)');
+  var ico=state==='done'?'✓':n;
+  return '<div style="display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--bdr-gold);'+(state==='off'?'opacity:.45':'')+'">'
+    +'<div style="flex:0 0 26px;height:26px;border-radius:50%;border:1.5px solid '+col+';color:'+col+';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">'+ico+'</div>'
+    +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text1);margin-bottom:6px">'+title+'</div>'+(state==='off'?'':body)+'</div></div>';
+}
+
+function cfSigRender(){
+  var z=document.getElementById('sig-zone'); var doc=CF_SIG.doc; if(!z||!doc) return;
+  var s1=CF_SIG.viewed?'done':'on';
+  var s2=!CF_SIG.viewed?'off':(CF_SIG.code||CF_SIG.verifiedAt?'done':'on');
+  var s3=!CF_SIG.code&&!CF_SIG.verifiedAt?'off':(CF_SIG.verifiedAt?'done':'on');
+  var s4=CF_SIG.verifiedAt?'on':'off';
+  var full=((CLIENT.prenom||'')+' '+(CLIENT.nom||'')).trim();
+  var h='<div style="background:var(--surface);border:1.5px solid var(--bdr-gold);border-radius:12px;padding:18px 20px;margin-top:14px">'
+   +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="font-size:22px">✍️</div><div><div style="font-size:14px;font-weight:700;color:var(--gold2)">Signature électronique</div><div style="font-size:12px;color:var(--text3)">'+escH(doc.nom||'Document')+'</div></div><button onclick="closeSig()" class="btn btn-outline btn-sm" style="margin-left:auto">Annuler</button></div>'
+   +_cfStep(1,'Prendre connaissance du document',s1,'<button onclick="cfOpenSigDoc()" class="btn btn-outline btn-sm">📄 Ouvrir le document</button>'+(CF_SIG.viewed?' <span style="font-size:11px;color:var(--green)">Document consulté</span>':'<div style="font-size:11px;color:var(--text3);margin-top:6px">Lisez le document dans son intégralité avant de le signer.</div>'))
+   +_cfStep(2,'Donner votre consentement et recevoir votre code',s2,
+      '<label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--text2);line-height:1.5;cursor:pointer"><input type="checkbox" id="cf-consent" '+(CF_SIG.consentAt?'checked disabled':'')+' style="margin-top:2px;width:auto"> <span>J’ai pris connaissance du document « '+escH(doc.nom||'')+' » et j’accepte de le signer électroniquement. Je reconnais que cette signature électronique m’engage au même titre qu’une signature manuscrite.</span></label>'
+      +(CF_SIG.code||CF_SIG.verifiedAt?'<div style="font-size:11px;color:var(--green);margin-top:8px">Code envoyé à '+escH(CF_SIG.codeTo)+'</div>':'<button onclick="cfSendCode()" class="btn btn-gold btn-sm" style="margin-top:10px">📧 Recevoir mon code par email</button>'))
+   +_cfStep(3,'Saisir le code reçu par email',s3,
+      CF_SIG.verifiedAt?'<span style="font-size:11px;color:var(--green)">Code vérifié</span>':
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="cf-code" inputmode="numeric" maxlength="6" placeholder="Code à 6 chiffres" style="width:150px;padding:8px 10px;border:1.5px solid var(--bdr-gold);border-radius:6px;font-size:15px;letter-spacing:3px;background:var(--bg);color:var(--text1)"><button onclick="cfVerifyCode()" class="btn btn-gold btn-sm">Vérifier</button><button onclick="cfSendCode(true)" class="btn btn-outline btn-sm" style="font-size:11px">Renvoyer un code</button></div><div id="cf-code-err" style="display:none;font-size:11px;color:var(--red);margin-top:6px"></div><div style="font-size:11px;color:var(--text3);margin-top:6px">Le code est valable 10 minutes. Pensez à vérifier vos courriers indésirables.</div>')
+   +_cfStep(4,'Signer',s4,
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px"><div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Vos nom et prénom (tels qu’ils apparaissent : '+escH(full)+')</label><input id="cf-name" type="text" autocomplete="name" style="width:100%;padding:8px 10px;border:1.5px solid var(--bdr-gold);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text1)"></div><div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Fait à</label><input id="cf-lieu" type="text" placeholder="Ville" style="width:100%;padding:8px 10px;border:1.5px solid var(--bdr-gold);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text1)"></div></div>'
+      +'<label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Votre signature manuscrite (au doigt ou à la souris)</label><canvas id="cf-canvas" width="600" height="150" style="width:100%;height:150px;cursor:crosshair;background:#fff;border-radius:6px;border:1.5px solid var(--bdr-gold);display:block;touch-action:none"></canvas>'
+      +'<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button onclick="cfClearPad()" class="btn btn-outline btn-sm">Effacer</button><button id="cf-sign-btn" onclick="cfConfirmSign()" class="btn btn-gold" style="padding:8px 18px;font-size:13px">✅ Signer le document</button></div>')
+   +'<div style="font-size:10.5px;color:var(--text3);margin-top:10px;line-height:1.5">Signature électronique au sens du règlement (UE) n° 910/2014 « eIDAS » et des articles 1366 et 1367 du Code civil. Un certificat de signature (date, heure, code de vérification, empreinte numérique du document) est ajouté au document signé.</div>'
+   +'</div>';
+  z.innerHTML=h;
+  if(CF_SIG.verifiedAt) _cfInitPad();
+}
+
+function _cfInitPad(){
+  var c=document.getElementById('cf-canvas'); if(!c) return;
+  var r=c.getBoundingClientRect(); c.width=Math.max(300,Math.round(r.width)); c.height=150;
+  var ctx=c.getContext('2d'); ctx.lineWidth=2.4; ctx.strokeStyle='#0A1628'; ctx.lineCap='round'; ctx.lineJoin='round'; CF_SIG.ctx=ctx; CF_SIG.drawing=false;
+  function xy(e){ var b=c.getBoundingClientRect(); return [(e.clientX-b.left)*(c.width/b.width),(e.clientY-b.top)*(c.height/b.height)]; }
+  c.onpointerdown=function(e){ CF_SIG.drawing=true; c.setPointerCapture&&c.setPointerCapture(e.pointerId); var p=xy(e); ctx.beginPath(); ctx.moveTo(p[0],p[1]); e.preventDefault(); };
+  c.onpointermove=function(e){ if(!CF_SIG.drawing) return; var p=xy(e); ctx.lineTo(p[0],p[1]); ctx.stroke(); e.preventDefault(); };
+  c.onpointerup=c.onpointerleave=c.onpointercancel=function(){ CF_SIG.drawing=false; };
+}
+function cfClearPad(){ var c=document.getElementById('cf-canvas'); if(c&&CF_SIG.ctx) CF_SIG.ctx.clearRect(0,0,c.width,c.height); }
+
+async function cfSendCode(resend){
+  var doc=CF_SIG.doc; if(!doc) return;
+  if(!resend){ var cb=document.getElementById('cf-consent'); if(!cb||!cb.checked){ toast('Cochez la case de consentement pour continuer','error'); return; } CF_SIG.consentAt=_cfNow(); }
+  if(resend && CF_SIG.codeSentAt && Date.now()-CF_SIG.codeSentAt<30000){ toast('Patientez quelques secondes avant de redemander un code',''); return; }
+  var code=String(Math.floor(100000+Math.random()*900000));
+  try{
+    toast('Envoi du code…','');
+    await sendEmailJS(EJS_SERVICE_SIG,EJS_TPL_SIG,{ to_email:CLIENT.email, to_name:((CLIENT.prenom||'')+' '+(CLIENT.nom||'')).trim(), from_name:'Caremma Finance', reply_to:CF_SIG_ADVISOR,
+      client_prenom:CLIENT.prenom||'', access_code:code, subject:'Votre code de signature — Caremma Finance',
+      message:'Votre code pour signer « '+(doc.nom||'document')+' » : '+code+' (valable 10 minutes). Si vous n’êtes pas à l’origine de cette demande, ignorez ce message.' });
+    CF_SIG.code=code; CF_SIG.codeSentAt=Date.now(); CF_SIG.codeTo=CLIENT.email; CF_SIG.tries=0;
+    toast('Code envoyé ✓','success'); cfSigRender();
+    setTimeout(function(){ var i=document.getElementById('cf-code'); if(i) i.focus(); },100);
+  }catch(e){ toast('Envoi du code impossible : '+(e.message||e),'error'); }
+}
+
+function cfVerifyCode(){
+  var v=((document.getElementById('cf-code')||{}).value||'').replace(/\D/g,'');
+  var err=document.getElementById('cf-code-err');
+  function fail(m){ if(err){ err.textContent=m; err.style.display='block'; } }
+  if(!CF_SIG.code) return fail('Demandez d’abord un code.');
+  if(Date.now()-CF_SIG.codeSentAt>10*60*1000){ CF_SIG.code=null; cfSigRender(); toast('Code expiré — demandez-en un nouveau','error'); return; }
+  if(CF_SIG.tries>=5){ CF_SIG.code=null; cfSigRender(); toast('Trop de tentatives — demandez un nouveau code','error'); return; }
+  if(v!==CF_SIG.code){ CF_SIG.tries++; return fail('Code incorrect ('+(5-CF_SIG.tries)+' tentative(s) restante(s)).'); }
+  CF_SIG.verifiedAt=_cfNow(); CF_SIG.code=null; cfSigRender();
+}
+
+function _cfNorm(t){ return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z]/g,''); }
+
+async function cfConfirmSign(){
+  if(CF_SIG.busy) return;
+  var doc=CF_SIG.doc; if(!doc||!CF_SIG.verifiedAt) return;
+  var typed=((document.getElementById('cf-name')||{}).value||'').trim();
+  var lieu=((document.getElementById('cf-lieu')||{}).value||'').trim();
+  var a=_cfNorm((CLIENT.prenom||'')+(CLIENT.nom||'')), b=_cfNorm((CLIENT.nom||'')+(CLIENT.prenom||'')), t=_cfNorm(typed);
+  if(!typed || (t!==a && t!==b)){ toast('Saisissez vos nom et prénom exactement comme indiqué','error'); return; }
+  var c=document.getElementById('cf-canvas'); var px=CF_SIG.ctx.getImageData(0,0,c.width,c.height).data; var drawn=false; for(var i=3;i<px.length;i+=4){ if(px[i]>0){ drawn=true; break; } }
+  if(!drawn){ toast('Tracez votre signature dans le cadre','error'); return; }
+  CF_SIG.busy=true; var btn=document.getElementById('cf-sign-btn'); if(btn){ btn.disabled=true; btn.textContent='Signature en cours…'; }
+  var sigData=c.toDataURL('image/png'); var now=_cfNow();
+  var ip='non communiquée'; try{ var ir=await fetch('https://api.ipify.org?format=json',{cache:'no-store'}); if(ir.ok){ ip=(await ir.json()).ip||ip; } }catch(_){}
+  var audit={ version:2, docId:String(doc.id), docNom:doc.nom||'', signataire:((CLIENT.prenom||'')+' '+(CLIENT.nom||'')).trim(), email:CLIENT.email, nomSaisi:typed, lieu:lieu,
+    consentement:CF_SIG.consentAt, codeEnvoyeA:CF_SIG.codeTo, codeEnvoyeLe:new Date(CF_SIG.codeSentAt).toLocaleString('fr-FR',{timeZone:'Europe/Paris'}), codeVerifieLe:CF_SIG.verifiedAt,
+    signeLe:now, ip:ip, navigateur:navigator.userAgent, methode:'Signature électronique simple — authentification par code à usage unique envoyé par email' };
+  try{
+    var res=await cfBuildSignedPdf(doc, sigData, audit);
+    audit.empreinteOriginal=res.hashOriginal;
+    doc.signature=sigData; doc.signatureDate=now.local; doc.signatureLieu=lieu; doc.status='signed'; doc.signatureAudit=audit; doc.pdfName=res.pdfName;
+    saveLocal(); try{ renderDocs(); }catch(_){} try{ renderMesDocuments(); }catch(_){}
+    try{ var url=URL.createObjectURL(new Blob([res.bytes],{type:'application/pdf'})); var dl=document.createElement('a'); dl.href=url; dl.download=res.pdfName; document.body.appendChild(dl); dl.click(); dl.remove(); setTimeout(function(){ try{URL.revokeObjectURL(url);}catch(_){} },8000); }catch(_){}
+    var chunkIds=await _cfUploadChunks(_cfBytesToB64(res.bytes));
+    doc.pdfChunks=chunkIds; saveLocal();
+    var d=await jbGet(MSG_BIN); var k=eKey(CLIENT.email);
+    if(!d.messages) d.messages={};
+    if(!d.messages[k]) d.messages[k]={prenom:CLIENT.prenom,nom:CLIENT.nom,email:CLIENT.email,msgs:[],docs:[]};
+    var docs=d.messages[k].docs||[]; var idx=docs.findIndex(function(x){return String(x.id)===String(doc.id);});
+    var upd={ id:doc.id, nom:doc.nom, docType:doc.docType||doc.type||'', signature:sigData, signatureDate:now.local, signatureLieu:lieu, status:'signed', pdfChunks:chunkIds, pdfName:res.pdfName, signatureAudit:audit };
+    if(idx>=0) docs[idx]=Object.assign(docs[idx],upd); else docs.push(upd);
+    d.messages[k].docs=docs;
+    if(!d.messages[k].msgs) d.messages[k].msgs=[];
+    d.messages[k].msgs.push({id:Date.now(),from:'client',text:'✅ J’ai signé électroniquement le document « '+doc.nom+' » le '+now.local+'.',date:new Date().toLocaleDateString('fr-FR'),read:false});
+    await jbPut(MSG_BIN,d);
+    try{ await sendEmailJS('service_hp5456h','template_v56dw5r',{ to_email:CF_SIG_ADVISOR, to_name:'Caremma Finance', from_name:'Espace client Caremma', reply_to:CLIENT.email, html_body:'',
+      subject:'Document signé — '+audit.signataire+' — '+(doc.nom||''),
+      message:audit.signataire+' a signé électroniquement « '+(doc.nom||'')+' » le '+now.local+(lieu?' à '+lieu:'')+'.\n\nLe PDF signé, avec son certificat de signature, est disponible dans le CRM (fiche client → Documents → ⬇ PDF signé).' }); }catch(_){}
+    closeSig();
+    toast('✅ Document signé — une copie vient d’être téléchargée et votre conseiller est prévenu','success');
+  }catch(e){
+    CF_SIG.busy=false; if(btn){ btn.disabled=false; btn.textContent='✅ Signer le document'; }
+    toast('La signature n’a pas pu être finalisée : '+(e.message||e)+'. Réessayez.','error');
+  }
+}
+function confirmSig(){ return cfConfirmSign(); }
+
+async function _cfUploadChunks(b64){
+  var CH=85000, ids=[];
+  for(var i=0;i<b64.length;i+=CH){
+    var part=b64.slice(i,i+CH), id=null;
+    for(var att=0;att<5 && !id;att++){
+      try{ var r=await fetch('https://api.jsonbin.io/v3/b',{method:'POST',headers:{'Content-Type':'application/json','X-Master-Key':JBKEY},body:JSON.stringify({i:ids.length,c:part})}); if(r.ok){ id=((await r.json()).metadata||{}).id||null; } }catch(_){}
+      if(!id) await new Promise(function(rs){ setTimeout(rs,700*(att+1)); });
+    }
+    if(!id) throw new Error('envoi du document signé interrompu (réseau)');
+    ids.push(id);
+    if(i+CH<b64.length) await new Promise(function(rs){ setTimeout(rs,650); });
+  }
+  return ids;
+}
+
+async function cfBuildSignedPdf(doc, sigData, audit){
+  var L=await _cfPdfLib();
+  var original=null, hashSrc=null;
+  if(doc.data || (doc.dataChunks&&doc.dataChunks.length)){ original=await _cfOriginalBytes(doc); hashSrc=original; }
+  var base;
+  if(original && _cfIsPdf(doc)){ base=await L.PDFDocument.load(original,{ignoreEncryption:true}); }
+  else if(doc.html){
+    hashSrc=new TextEncoder().encode(doc.html);
+    var b64=await cfHtmlPdfB64(doc, sigData, audit.signeLe.local, audit.lieu);
+    if(!b64) throw new Error('mise en forme du document impossible');
+    base=await L.PDFDocument.load(_cfB64ToBytes(b64));
+  } else if(original){
+    base=await L.PDFDocument.create();
+    var mime=doc.dataMime||(String(doc.data||'').match(/^data:([^;]+);/)||[])[1]||'';
+    var pg=base.addPage([595.28,841.89]); var img=null;
+    if(/png/i.test(mime)) img=await base.embedPng(original); else if(/jpe?g/i.test(mime)) img=await base.embedJpg(original);
+    if(!img) throw new Error('format de document non signable');
+    var sc=Math.min(515/img.width, 760/img.height, 1); pg.drawImage(img,{x:(595.28-img.width*sc)/2,y:(841.89-img.height*sc)/2,width:img.width*sc,height:img.height*sc});
+  } else throw new Error('document original introuvable');
+  var hash=await _cfSha256(hashSrc);
+  var font=await base.embedFont(L.StandardFonts.Helvetica), bold=await base.embedFont(L.StandardFonts.HelveticaBold);
+  var NAVY=L.rgb(0.118,0.169,0.278), GOLD=L.rgb(0.663,0.510,0.247), INK=L.rgb(0.16,0.16,0.18), MUT=L.rgb(0.42,0.42,0.46);
+  function clean(t){ return String(t==null?'':t).replace(/[’‘]/g,"'").replace(/[«»]/g,'"').replace(/[–—]/g,'-').replace(/…/g,'...').replace(/[  ]/g,' ').replace(/[^\x20-\x7E -ÿ]/g,''); }
+  var ref=String(doc.id).slice(-14);
+  base.getPages().forEach(function(p,ix){ var w=p.getWidth(); var txt=clean('Signé électroniquement par '+audit.signataire+' le '+audit.signeLe.local+' - Réf. '+ref+' - page '+(ix+1)+'/'+base.getPageCount()); p.drawText(txt,{x:24,y:12,size:6.5,font:font,color:MUT,maxWidth:w-48}); });
+  var cp=base.addPage([595.28,841.89]); var y, X=50;
+  cp.drawRectangle({x:0,y:780,width:595.28,height:61.89,color:NAVY});
+  try{ var lg=await base.embedPng(_cfB64ToBytes(CF_LOGO_PNG)); cp.drawImage(lg,{x:X,y:788,width:44,height:44}); }catch(_){}
+  cp.drawText('CAREMMA FINANCE',{x:X+56,y:813,size:14,font:bold,color:L.rgb(0.79,0.66,0.30)});
+  cp.drawText(clean('Certificat de signature électronique'),{x:X+56,y:795,size:10,font:font,color:L.rgb(1,1,1)});
+  y=750;
+  function line(lbl,val){ var v=clean(val||'-'); var words=v.split(' '), lines=[], cur=''; words.forEach(function(wd){ while(font.widthOfTextAtSize(wd,9.5)>330){ var cut=wd.length-1; while(cut>1 && font.widthOfTextAtSize(wd.slice(0,cut),9.5)>330) cut--; if(cur){ lines.push(cur); cur=''; } lines.push(wd.slice(0,cut)); wd=wd.slice(cut); } var t=cur?cur+' '+wd:wd; if(font.widthOfTextAtSize(t,9.5)>330){ if(cur) lines.push(cur); cur=wd; } else cur=t; }); if(cur) lines.push(cur);
+    cp.drawText(clean(lbl),{x:X,y:y,size:8.5,font:bold,color:NAVY,maxWidth:155}); lines.forEach(function(l,ix){ cp.drawText(l,{x:X+165,y:y-ix*12,size:9.5,font:font,color:INK}); }); y-=Math.max(1,lines.length)*12;
+    cp.drawLine({start:{x:X,y:y+5},end:{x:545,y:y+5},thickness:0.4,color:L.rgb(0.88,0.86,0.82)}); y-=11; }
+  line('Document',audit.docNom); line('Référence',String(doc.id));
+  line('Empreinte SHA-256 (original)',hash);
+  line('Signataire',audit.signataire); line('Adresse email',audit.email); line('Nom saisi',audit.nomSaisi);
+  if(audit.lieu) line('Fait à',audit.lieu);
+  line('Consentement exprimé le',(audit.consentement||{}).local||'-');
+  line('Code envoyé à',audit.codeEnvoyeA+' le '+audit.codeEnvoyeLe);
+  line('Code vérifié le',(audit.codeVerifieLe||{}).local||'-');
+  line('Document signé le',audit.signeLe.local+' (heure de Paris) - '+audit.signeLe.iso+' (UTC)');
+  line('Adresse IP',audit.ip); line('Navigateur',audit.navigateur);
+  line('Procédé',audit.methode+'. Signature électronique au sens du règlement (UE) n° 910/2014 (eIDAS) et des articles 1366 et 1367 du Code civil.');
+  y-=6; cp.drawText('Signature manuscrite du signataire',{x:X,y:y,size:8.5,font:bold,color:NAVY}); y-=8;
+  try{ var si=await base.embedPng(_cfB64ToBytes(sigData)); var sw=200, sh=sw*si.height/si.width; if(sh>70){ sh=70; sw=sh*si.width/si.height; } cp.drawRectangle({x:X,y:y-sh-8,width:sw+16,height:sh+12,borderColor:GOLD,borderWidth:0.8}); cp.drawImage(si,{x:X+8,y:y-sh-2,width:sw,height:sh}); y-=sh+26; }catch(_){ y-=20; }
+  cp.drawText(clean('Certificat généré automatiquement par l\'espace client Caremma Finance. Toute modification du document original après signature est détectable en recalculant son empreinte.'),{x:X,y:Math.max(y,60),size:7.5,font:font,color:MUT,maxWidth:495,lineHeight:10});
+  cp.drawText(clean('SAS Caremma Finance - ORIAS n° 24007767 - 19 Rue du Prieuré, 78600 Maisons-Laffitte'),{x:X,y:30,size:7,font:font,color:MUT});
+  base.setTitle(clean((doc.nom||'Document')+' - signé'));
+  base.setProducer('Caremma Finance'); base.setModificationDate(new Date());
+  var bytes=await base.save();
+  var pdfName=clean((doc.nom||'document').replace(/\.pdf$/i,'')).replace(/[^a-zA-Z0-9À-ÿ _-]+/g,'').trim()+' - signé.pdf';
+  return { bytes:bytes, hashOriginal:hash, pdfName:pdfName };
+}
+</script>
