@@ -3345,7 +3345,7 @@ function renderLiveVal(){
     el.style.display='';
     el.innerHTML='<div class="lv-row"><div><div class="lv-t">Valorisation estimée</div>'
       +'<div class="lv-v">'+eur(LV.est)+'</div>'
-      +(LV.prev>0?(function(){var dj=LV.est-LV.prev,pj=dj/LV.prev*100,u=dj>=0;return '<div class="lv-d" style="color:'+(u?'#6fcf97':'#eb7a7a')+'"><b>'+(u?'+':'−')+eur(Math.abs(dj)).replace(/\s/g,' ')+' ('+(u?'+':'−')+Math.abs(pj).toFixed(2).replace('.',',')+' %)</b> par rapport à la clôture de la veille</div>';})():'')
+      +(LV.prev>0?(function(){var dj=LV.est-LV.prev,pj=dj/LV.prev*100,u=dj>=0;return '<div class="lv-d" style="color:'+(u?'#6fcf97':'#eb7a7a')+'"><b>'+(u?'+':'−')+eur(Math.abs(dj)).replace(/\s/g,' ')+' ('+(u?'+':'−')+Math.abs(pj).toFixed(2).replace('.',',')+' %)</b> sur la séance du jour'+(LV.nWait?' <span style="opacity:.75;font-weight:400">· '+LV.nWait+' ligne'+(LV.nWait>1?'s':'')+' sur une place pas encore ouverte (ex. Wall Street) : variation 0 pour l\'instant</span>':'')+'</div>';})():'<div class="lv-d" style="opacity:.8">Marchés pas encore ouverts aujourd\'hui : pas de variation du jour</div>')
       +'<div class="lv-d" style="color:'+(up?'#6fcf97':'#eb7a7a')+';font-size:12px;opacity:.85">'+(up?'+':'−')+eur(Math.abs(d)).replace(/\s/g,' ')+' ('+(up?'+':'−')+Math.abs(pc).toFixed(2).replace('.',',')+' %)'+(relD?' depuis le relevé du '+relD:'')+'</div></div>'
       +'<button type="button" class="lv-b" onclick="loadLiveValuation(true)">Actualiser</button></div>'
       +'<div class="lv-s">'+(LV.nClose&&LV.nClose>=LV.n?'Cours de clôture de la dernière séance (marchés fermés), consultés le '+dd+' à '+hh:'Cours de marché différés au '+dd+' à '+hh+(LV.nClose?' ('+LV.nClose+' ligne'+(LV.nClose>1?'s':'')+' au dernier cours de clôture, marché fermé)':''))+' · '+LV.n+' ligne'+(LV.n>1?'s':'')+' sur '+LV.of+' actualisée'+(LV.n>1?'s':'')+'. Les autres lignes (liquidités, produits structurés…) restent à leur valeur du relevé.</div>'
@@ -3361,7 +3361,7 @@ async function loadLiveValuation(force){
   if(!force&&LV.key===key&&(LV.state==='loading'||LV.state==='ok'||LV.state==='none')) return;
   var elig=pos.filter(_lvEligible);
   if(!elig.length){LV={key:key,state:'none'};renderLiveVal();return;}
-  LV={key:key,state:'loading'};renderLiveVal();
+  if(force&&LV.state==='ok'&&LV.key===key){ LV.refreshing=true; } else { LV={key:key,state:'loading'};renderLiveVal(); }   /* actualisation : on garde l'affichage en attendant */
   var quotes={};
   try{
     for(var i=0;i<elig.length;i+=10){
@@ -3375,14 +3375,14 @@ async function loadLiveValuation(force){
     }
   }catch(e){ console.warn('cours indisponibles',e&&e.message); }
   if(LV.key!==key) return;                                  /* le client a changé entre-temps */
-  var tot=0, rel=0, n=0, prevTot=0, maxTs=0, nClose=0, nPrev=0, nowS=Date.now()/1000;
+  var nWait=0, tot=0, rel=0, n=0, prevTot=0, maxTs=0, nClose=0, nPrev=0, nowS=Date.now()/1000;
   pos.forEach(function(p){
     var v=+p.valeur||0; rel+=v;
     var q=quotes[p.isin], e=(_lvEligible(p)&&q&&q.found&&q.priceEur>0)?p.quantite*q.priceEur:null;
-    if(e!=null && v>0 && Math.abs(e/v-1)<0.4){ tot+=e; n++; prevTot+=(q.prevPriceEur>0?p.quantite*q.prevPriceEur:e); if(q.prevPriceEur>0) nPrev++; if(q.ts>maxTs)maxTs=q.ts; if(!(q.ts>0)||nowS-q.ts>1800) nClose++; } else { tot+=v; prevTot+=v; }   /* écart > 40 % = rapprochement douteux : on garde le relevé */
+    if(e!=null && v>0 && Math.abs(e/v-1)<0.4){ tot+=e; n++; var td=_lvToday(q); prevTot+=(td&&q.prevPriceEur>0?p.quantite*q.prevPriceEur:e); if(td&&q.prevPriceEur>0) nPrev++; else if(!td) nWait++; if(q.ts>maxTs)maxTs=q.ts; if(!(q.ts>0)||nowS-q.ts>1800) nClose++; } else { tot+=v; prevTot+=v; }   /* écart > 40 % = rapprochement douteux : on garde le relevé */
   });
   if(!n){ LV={key:key,state:'ko'}; }
-  else LV={key:key,state:'ok',est:tot,rel:rel,n:n,of:elig.length,at:new Date(),nClose:nClose,prev:(nPrev>=n*0.8?prevTot:0),sess:(maxTs?new Date(maxTs*1000):new Date()).toLocaleDateString('sv-SE',{timeZone:'Europe/Paris'})};
+  else LV={key:key,state:'ok',est:tot,rel:rel,n:n,of:elig.length,at:new Date(),nClose:nClose,prev:(nPrev>0?prevTot:0),nToday:nPrev,nWait:nWait,sess:(maxTs?new Date(maxTs*1000):new Date()).toLocaleDateString('sv-SE',{timeZone:'Europe/Paris'})};
   renderLiveVal();
   try{ if(window._pendingHistory&&document.getElementById('ptf-chart')) drawChart(window._pendingHistory); }catch(_e){}
 }
@@ -4619,4 +4619,27 @@ async function cfBuildSignedPdf(doc, sigData, audit){
   var pdfName=clean((doc.nom||'document').replace(/\.pdf$/i,'')).replace(/[^a-zA-Z0-9À-ÿ _-]+/g,'').trim()+' - signé.pdf';
   return { bytes:bytes, hashOriginal:hash, pdfName:pdfName };
 }
+</script>
+
+<script>
+/* ═══ Valorisation en direct : séance du jour, KPI en direct, actualisation automatique de la courbe ═══ */
+function _lvParisDay(d){ return d.toLocaleDateString('sv-SE',{timeZone:'Europe/Paris'}); }
+function _lvToday(q){ return !!(q && q.ts>0 && _lvParisDay(new Date(q.ts*1000))===_lvParisDay(new Date())); }   /* la place a-t-elle déjà coté aujourd'hui ? */
+function lvApplyKpis(){
+  if(typeof LV==='undefined'||LV.state!=='ok'||!(LV.est>0)) return;
+  var P=(CLIENT&&CLIENT.patrimoine)||{}, rd=(P.releve&&P.releve.date)?String(P.releve.date).split('-').reverse().join('/'):(P.dateMAJ||'');
+  var t='Cours en direct · '+LV.at.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+' à '+LV.at.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  var tip='Valorisation au cours de marché (différé). Valeur au relevé'+(rd?' du '+rd:'')+' : '+fmt(Math.round(LV.rel));
+  ['k-val','r-val'].forEach(function(id){var x=document.getElementById(id); if(x){x.textContent=fmt(Math.round(LV.est)); x.title=tip;}});
+  ['k-date','r-date'].forEach(function(id){var x=document.getElementById(id); if(x){x.textContent=t; x.title=tip;}});
+}
+(function(){
+  var _rk=renderKPIs; renderKPIs=function(){ var r=_rk.apply(this,arguments); try{lvApplyKpis(); if(CLIENT) loadLiveValuation(false);}catch(e){} return r; };
+  var _rr=renderReporting; renderReporting=function(){ var r=_rr.apply(this,arguments); try{lvApplyKpis();}catch(e){} return r; };
+  var _rl=renderLiveVal; renderLiveVal=function(){ var r=_rl.apply(this,arguments); try{lvApplyKpis(); if(LV.state==='ok'){var mv=nextMilestoneInfo(currentPortfolioValue()),a=document.getElementById('k-progress'),b=document.getElementById('k-progress-sub'); if(a)a.textContent=mv.pct+'%'; if(b)b.textContent='vers '+fmt(mv.next);}}catch(e){} return r; };
+  var _cv=currentPortfolioValue; currentPortfolioValue=function(){ return (typeof LV!=='undefined'&&LV.state==='ok'&&LV.est>0)?LV.est:_cv.apply(this,arguments); };
+  function due(ms){ return typeof CLIENT!=='undefined'&&CLIENT&&!document.hidden&&LV.state==='ok'&&!LV.refreshing&&(Date.now()-LV.at.getTime())>ms; }
+  setInterval(function(){ try{ if(due(5*60e3)) loadLiveValuation(true); }catch(e){} }, 60e3);            /* toutes les 5 min : cours, valeur et courbe */
+  document.addEventListener('visibilitychange',function(){ try{ if(due(60e3)) loadLiveValuation(true); }catch(e){} });
+})();
 </script>
